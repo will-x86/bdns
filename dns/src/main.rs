@@ -81,6 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // read command line arguments
     let opt = Opt::parse();
+
     let mut my_server = Server::new(Some(opt))?;
     my_server.bootstrap();
 
