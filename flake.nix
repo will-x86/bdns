@@ -9,7 +9,7 @@
 
   outputs =
     {
-      self,
+      #self,
       nixpkgs,
       rust-overlay,
       flake-utils,
@@ -22,6 +22,11 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+
+        rustToolchain = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [ "rust-src" ];
+          targets = [ "wasm32-unknown-unknown" ];
+        };
       in
       with pkgs;
       {
@@ -32,15 +37,16 @@
             pkg-config
             eza
             fd
-            rust-bin.stable.latest.default
+            rustToolchain
             rust-analyzer
-            # cargo-watch
-            # pkgs.sqlite
-            # pkgs.bunyan-rs
             pkgs.zsh
             cmake
+            ## tauri
+            librsvg
+            webkitgtk_4_1
+            ## tauri end
+            knot-dns
           ];
-
           shellHook = ''
             alias ls=eza
             export PATH=$PATH:${pkgs.rust-analyzer}/bin
