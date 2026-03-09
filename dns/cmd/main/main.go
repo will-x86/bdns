@@ -4,6 +4,8 @@ package main
 // https://harshagarwal29.hashnode.dev/building-a-dns-resolver-in-golang-a-step-by-step-guide
 import (
 	"crypto/tls"
+	"encoding/binary"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -36,10 +38,31 @@ func main() {
 				log.Println("Error:", err)
 				continue
 			}
-			go handleTLSClient(conn)
+			go func(c net.Conn) {
+				defer c.Close()
+				// TCP DNS: 2-byte big-endian length prefix per RFC 1035 §4.2.2
+				var msgLen uint16
+				if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
+					log.Printf("Error reading TCP length prefix: %v\n", err)
+					return
+				}
+				buf := make([]byte, msgLen)
+				if _, err := io.ReadFull(c, buf); err != nil {
+					log.Printf("Error reading TCP DNS message: %v\n", err)
+					return
+				}
+				handleDNSClient(buf, func(response []byte) error {
+					// Prepend 2-byte length prefix on the response
+					prefix := make([]byte, 2)
+					binary.BigEndian.PutUint16(prefix, uint16(len(response)))
+					_, err := c.Write(append(prefix, response...))
+					return err
+				}, c.RemoteAddr().String())
+			}(conn)
 		}
 	}()
-	// Run non-TLS DNS server on UDP port 1053
+
+	// non-TLS DNS server
 	serverAddr, err := net.ResolveUDPAddr("udp", ":1053")
 	if err != nil {
 		log.Println("Error resolving UDP address: ", err.Error())
@@ -48,94 +71,49 @@ func main() {
 
 	serverConn, err := net.ListenUDP("udp", serverAddr)
 	if err != nil {
-
 		log.Println("Error listening: ", err.Error())
 		os.Exit(1)
 	}
 	log.Println("Listening on UDP :1053")
 	defer serverConn.Close()
+
 	for {
-		requestBytes := make([]byte, 512)
+		requestBytes := make([]byte, 4096)
 		_, clientAddr, err := serverConn.ReadFromUDP(requestBytes)
 		if err != nil {
 			log.Println("Error receiving: ", err.Error())
 		} else {
-			log.Println("Received request from ", clientAddr)
-			go handleDNSClient(requestBytes, serverConn, clientAddr) // array is value type (call-by-value), i.e. copied
+			go handleDNSClient(requestBytes, func(response []byte) error {
+				_, err := serverConn.WriteToUDP(response, clientAddr)
+				return err
+			}, clientAddr.String())
 		}
 	}
-
 }
 
-func handleTLSClient(conn net.Conn) {
-	defer conn.Close()
+func handleDNSClient(requestBytes []byte, write func([]byte) error, remoteAddr string) {
+	log.Printf("Received request from %s\n", remoteAddr)
 
-	// Read DNS query
-	buf := make([]byte, 512)
-	n, err := conn.Read(buf)
-	if err != nil {
-		return
-	}
-
-	// Process and respond (use your existing logic here)
-	_ = n
-	log.Printf("Received request from %s\n", conn.RemoteAddr())
-}
-
-/*
-	func main() {
-		serverAddr, err := net.ResolveUDPAddr("udp", ":1053")
-
-		if err != nil {
-			log.Println("errr resolving UDP address: ", err.Error())
-			os.Exit(1)
-		}
-
-		serverConn, err := net.ListenUDP("udp", serverAddr)
-
-		if err != nil {
-			log.Println("Error listening: ", err.Error())
-			os.Exit(1)
-		}
-
-		log.Println("listen at: ", serverAddr)
-
-		defer serverConn.Close()
-
-		for {
-			requestBytes := make([]byte, 512)
-
-			_, clientAddr, err := serverConn.ReadFromUDP(requestBytes)
-
-			if err != nil {
-				log.Println("Error receiving: ", err.Error())
-			} else {
-				log.Println("Received request from ", clientAddr)
-				go handleDNSClient(requestBytes, serverConn, clientAddr) // array is value type (call-by-value), i.e. copied
-			}
-		}
-	}
-*/
-func handleDNSClient(requestBytes []byte, serverConn *net.UDPConn, clientAddr *net.UDPAddr) {
 	message := parser.Message()
 	err := message.Parse(requestBytes)
 	if err != nil {
-		panic(err)
+		log.Printf("Error parsing DNS message: %v\n", err)
+		return
 	}
 	for i, q := range message.Questions {
 		log.Printf("Question %d: QName=%s, QType=%d, QClass=%d\n", i+1, q.QName, q.QType, q.QClass)
 	}
-	proxy := proxy.NewClient("1.1.1.1", 53)
+
+	proxy := proxy.NewTLSClient("1.1.1.1", 853, "cloudflare-dns.com")
 	responseBytes, err := proxy.SendQuery(requestBytes)
 	if err != nil {
 		log.Printf("Error sending query to upstream DNS server: %v\n", err)
 		return
 	}
-	_, err = serverConn.WriteToUDP(responseBytes, clientAddr)
-	if err != nil {
-		log.Printf("Error sending response to client: %v\n", err)
+
+	if err := write(responseBytes); err != nil {
+		log.Printf("Error sending response to client %s: %v\n", remoteAddr, err)
 		return
 	}
-	log.Printf("Sent response to client %s\n", clientAddr.String())
-
+	log.Printf("Sent response to client %s\n", remoteAddr)
 }

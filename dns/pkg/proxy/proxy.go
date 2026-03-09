@@ -1,21 +1,30 @@
 package proxy
 
 import (
+	"crypto/tls"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"net"
-	"os"
 	"slices"
 )
 
 type Client struct {
 	serverAddress string
 	port          int
+	useTLS        bool
+	serverName    string // SNI for TLS
 }
 
 func NewClient(address string, port int) *Client {
 	return &Client{serverAddress: address, port: port}
 }
+
+func NewTLSClient(address string, port int, serverName string) *Client {
+	return &Client{serverAddress: address, port: port, useTLS: true, serverName: serverName}
+}
+
 func (c *Client) isIPV4() (bool, error) {
 	ip := net.ParseIP(c.serverAddress)
 	if ip.To4() != nil {
@@ -25,45 +34,86 @@ func (c *Client) isIPV4() (bool, error) {
 	}
 	return false, fmt.Errorf("invalid IP address: %s", c.serverAddress)
 }
-func (c *Client) SendQuery(query []byte) ([]byte, error) {
+
+func (c *Client) addr() (string, error) {
 	isIPV4, err := c.isIPV4()
 	if err != nil {
-		log.Printf("Error determining IP type: %v\n", err)
+		return "", err
+	}
+	if isIPV4 {
+		return fmt.Sprintf("%s:%d", c.serverAddress, c.port), nil
+	}
+	return fmt.Sprintf("[%s]:%d", c.serverAddress, c.port), nil
+}
+
+func (c *Client) SendQuery(query []byte) ([]byte, error) {
+	addr, err := c.addr()
+	if err != nil {
+		log.Printf("Error determining address: %v\n", err)
 		return nil, err
 	}
 
-	var addr string
-	if isIPV4 {
-		addr = fmt.Sprintf("%s:%d", c.serverAddress, c.port)
-	} else if !isIPV4 {
-		addr = fmt.Sprintf("[%s]:%d", c.serverAddress, c.port)
+	if c.useTLS {
+		return c.sendQueryTLS(addr, query)
 	}
+	return c.sendQueryUDP(addr, query)
+}
+
+func (c *Client) sendQueryUDP(addr string, query []byte) ([]byte, error) {
 	conn, err := net.Dial("udp", addr)
 	if err != nil {
-		log.Printf("Dial err %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("dial udp: %w", err)
 	}
 	defer conn.Close()
 
 	if _, err = conn.Write(query); err != nil {
-		log.Printf("Write err %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("write udp: %w", err)
 	}
 
-	response := make([]byte, 1024)
-	lengthOfTheResponse, err := conn.Read(response)
+	response := make([]byte, 4096)
+	n, err := conn.Read(response)
 	if err != nil {
-		fmt.Printf("Read err %v\n", err)
-		os.Exit(-1)
+		return nil, fmt.Errorf("read udp: %w", err)
+	}
+
+	response = response[:n]
+	if !hasTheSameID(query, response) {
+		return nil, fmt.Errorf("response ID mismatch")
+	}
+	return response, nil
+}
+
+func (c *Client) sendQueryTLS(addr string, query []byte) ([]byte, error) {
+	conn, err := tls.Dial("tcp", addr, &tls.Config{
+		ServerName: c.serverName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("dial tls: %w", err)
+	}
+	defer conn.Close()
+
+	// TCP DNS: 2-byte big-endian length prefix per RFC 1035 §4.2.2
+	prefix := make([]byte, 2)
+	binary.BigEndian.PutUint16(prefix, uint16(len(query)))
+	if _, err = conn.Write(append(prefix, query...)); err != nil {
+		return nil, fmt.Errorf("write tls: %w", err)
+	}
+
+	var respLen uint16
+	if err := binary.Read(conn, binary.BigEndian, &respLen); err != nil {
+		return nil, fmt.Errorf("read tls length prefix: %w", err)
+	}
+	response := make([]byte, respLen)
+	if _, err := io.ReadFull(conn, response); err != nil {
+		return nil, fmt.Errorf("read tls response: %w", err)
 	}
 
 	if !hasTheSameID(query, response) {
-		log.Printf("Response doesn't have the same ID of the query q:%v, r:%v\n", query, response)
-		return nil, fmt.Errorf("response doesn't have the same ID of the query")
+		return nil, fmt.Errorf("response ID mismatch")
 	}
-
-	return response[:lengthOfTheResponse], nil
+	return response, nil
 }
+
 func hasTheSameID(query, response []byte) bool {
 	return slices.Equal(query[:2], response[:2])
 }
