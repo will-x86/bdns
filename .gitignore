@@ -1,5 +1,6 @@
-target
 .direnv
-keys
 dist
 tmp
+data
+.crt
+.key
