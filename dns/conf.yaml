@@ -1,6 +1,0 @@
----
-version: 1
-threads: 2
-pid_file: /tmp/bdns.pid
-error_log: /tmp/bdns.log
-upgrade_sock: /tmp/bdns.sock

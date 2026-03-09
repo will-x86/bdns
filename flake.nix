@@ -46,6 +46,7 @@
             webkitgtk_4_1
             ## tauri end
             knot-dns
+            air
           ];
           shellHook = ''
             alias ls=eza
