@@ -40,6 +40,14 @@ func main() {
 			}
 			go func(c net.Conn) {
 				defer c.Close()
+				tlsConn := c.(*tls.Conn)
+				if err := tlsConn.Handshake(); err != nil {
+					log.Printf("TLS handshake error: %v\n", err)
+					return
+				}
+				sni := tlsConn.ConnectionState().ServerName
+				log.Printf("Client SNI: %s\n", sni)
+
 				// TCP DNS: 2-byte big-endian length prefix per RFC 1035 §4.2.2
 				var msgLen uint16
 				if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
