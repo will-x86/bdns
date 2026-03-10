@@ -6,22 +6,27 @@ import (
 	"github.com/valkey-io/valkey-go"
 )
 
-var client valkey.Client
+type Cache struct {
+	client valkey.Client
+}
 
-func InitClient() error {
-	var err error
-	client, err = valkey.NewClient(valkey.ClientOption{InitAddress: []string{"127.0.0.1:6379"}})
+func New(addr string) (*Cache, error) {
+
+	client, err := valkey.NewClient(valkey.ClientOption{InitAddress: []string{addr}})
 	if err != nil {
-		return err
+		return &Cache{}, err
 	}
-	return nil
+
+	return &Cache{
+		client: client,
+	}, nil
 
 }
-func DomainDNSCacheKey(domain string) string {
+func (c *Cache) DomainDNSCacheKey(domain string) string {
 	return "dns_cache:" + domain
 }
 
-func Set(ctx context.Context, key string, value []byte, ttl int64) error {
-	return client.Do(ctx, client.B().Set().Key(key).Value(string(value)).ExSeconds(ttl).Build()).Error()
+func (c *Cache) Set(ctx context.Context, key string, value []byte, ttl int64) error {
+	return c.client.Do(ctx, c.client.B().Set().Key(key).Value(string(value)).ExSeconds(ttl).Build()).Error()
 
 }

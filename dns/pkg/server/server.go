@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/binary"
 	"io"
@@ -9,10 +10,20 @@ import (
 
 	"github.com/will-x86/bdns/dns/pkg/parser"
 	"github.com/will-x86/bdns/dns/pkg/proxy"
+	//"github.com/will-x86/bdns/dns/pkg/rcache"
 )
 
-func RunServer() {
-	cert, err := tls.LoadX509KeyPair("server.crt", "server.key")
+type DNSUpstream interface {
+	SendQuery([]byte) ([]byte, error)
+}
+
+func RunServer(ctx context.Context, certFile, keyFile string) {
+	/*cache, err := rcache.New("127.0.0.1:6379")
+	if err != nil {
+		log.Fatalf("Failed to initialize valkey client: %v\n", err)
+	}*/
+
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -27,7 +38,13 @@ func RunServer() {
 	}
 	defer listener.Close()
 
+	go func() {
+		<-ctx.Done()
+		log.Println("Shutting down server...")
+		listener.Close()
+	}()
 	log.Println("Listening on TLS :8533")
+	upstream := proxy.NewTLSClient("1.1.1.1", 853, "cloudflare-dns.com")
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -55,7 +72,7 @@ func RunServer() {
 				log.Printf("Error reading TCP DNS message: %v\n", err)
 				return
 			}
-			handleDNSClient(buf, func(response []byte) error {
+			handleDNSClient(buf, upstream, func(response []byte) error {
 				// Prepend 2-byte length prefix on the response
 				prefix := make([]byte, 2)
 				binary.BigEndian.PutUint16(prefix, uint16(len(response)))
@@ -66,7 +83,7 @@ func RunServer() {
 	}
 
 }
-func handleDNSClient(requestBytes []byte, write func([]byte) error, remoteAddr string) {
+func handleDNSClient(requestBytes []byte, upstream DNSUpstream, write func([]byte) error, remoteAddr string) {
 	log.Printf("Received request from %s\n", remoteAddr)
 
 	message := parser.Message()
@@ -79,12 +96,8 @@ func handleDNSClient(requestBytes []byte, write func([]byte) error, remoteAddr s
 		log.Printf("Question %d: QName=%s, QType=%d, QClass=%d\n", i+1, q.QName, q.QType, q.QClass)
 	}
 
-	proxy := proxy.NewTLSClient("1.1.1.1", 853, "cloudflare-dns.com")
-	responseBytes, err := proxy.SendQuery(requestBytes)
-	if err != nil {
-		log.Printf("Error sending query to upstream DNS server: %v\n", err)
-		return
-	}
+	responseBytes, err := upstream.SendQuery(requestBytes)
+	//proxy := proxy.NewTLSClient("1.1.1.1", 853, "cloudflare-dns.com")
 
 	if err := write(responseBytes); err != nil {
 		log.Printf("Error sending response to client %s: %v\n", remoteAddr, err)
