@@ -1,4 +1,4 @@
-// / Proxies to cloudflare, should later on retry if fail
+// Proxies to cloudflare, should later on retry if fail
 package proxy
 
 import (
@@ -14,7 +14,7 @@ import (
 type Client struct {
 	serverAddress string
 	port          int
-	serverName    string // SNI for TLS
+	serverName    string // SNI for TLS - will be used later for identifying users
 }
 
 func NewTLSClient(address string, port int, serverName string) *Client {
@@ -61,7 +61,6 @@ func (c *Client) sendQueryTLS(addr string, query []byte) ([]byte, error) {
 	}
 	defer conn.Close()
 
-	// TCP DNS: 2-byte big-endian length prefix per RFC 1035 §4.2.2
 	prefix := make([]byte, 2)
 	binary.BigEndian.PutUint16(prefix, uint16(len(query)))
 	if _, err = conn.Write(append(prefix, query...)); err != nil {

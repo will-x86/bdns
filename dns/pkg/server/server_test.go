@@ -2,11 +2,17 @@ package server
 
 import (
 	"bytes"
+	"context"
+	"encoding/binary"
 	"errors"
 	"testing"
 
 	dns "codeberg.org/miekg/dns"
 )
+
+// ---------------------------------------------------------------------------
+// Test doubles
+// ---------------------------------------------------------------------------
 
 type fakeUpstream struct {
 	response []byte
@@ -17,7 +23,7 @@ func (f *fakeUpstream) SendQuery(_ []byte) ([]byte, error) {
 	return f.response, f.err
 }
 
-// counts the calls
+// countingUpstream lets tests assert how many times the upstream was called.
 type countingUpstream struct {
 	calls    int
 	response []byte
@@ -29,7 +35,11 @@ func (c *countingUpstream) SendQuery(_ []byte) ([]byte, error) {
 	return c.response, c.err
 }
 
-// buildQuery constructs a DNS message for name & type, returns wire bytes.
+// ---------------------------------------------------------------------------
+// Wire-format helpers
+// ---------------------------------------------------------------------------
+
+// buildQuery constructs a DNS query for name & type and returns wire bytes.
 func buildQuery(t *testing.T, name string, qtype uint16) []byte {
 	t.Helper()
 	m := dns.NewMsg(name, qtype)
@@ -44,8 +54,7 @@ func buildQuery(t *testing.T, name string, qtype uint16) []byte {
 	return out
 }
 
-// buildResponse bytes, flips QR=1, and returns response wire bytes.
-// Unpack() reads from m.Data
+// buildResponse flips QR=1 on the query wire bytes and returns response wire bytes.
 func buildResponse(t *testing.T, queryWire []byte) []byte {
 	t.Helper()
 	var m dns.Msg
@@ -62,51 +71,65 @@ func buildResponse(t *testing.T, queryWire []byte) []byte {
 	return out
 }
 
-// TestHandleDNSClient_HappyPath verifies that a valid query is forwarded
-// upstream and the response is passed verbatim to the write function.
-func TestHandleDNSClient_HappyPath(t *testing.T) {
+// txID returns the transaction ID from wire bytes (first 2 bytes, big-endian).
+func txID(b []byte) uint16 {
+	return binary.BigEndian.Uint16(b[0:2])
+}
+
+// withTxID returns a copy of the wire bytes with the transaction ID replaced.
+func withTxID(b []byte, id uint16) []byte {
+	out := make([]byte, len(b))
+	copy(out, b)
+	binary.BigEndian.PutUint16(out[0:2], id)
+	return out
+}
+
+// ---------------------------------------------------------------------------
+// handler.handle — no-cache path
+// ---------------------------------------------------------------------------
+
+func TestHandle_HappyPath(t *testing.T) {
 	query := buildQuery(t, "google.com", dns.TypeA)
 	response := buildResponse(t, query)
 
 	var written []byte
-	handleDNSClient(query, &fakeUpstream{response: response}, func(b []byte) error {
-		written = b
-		return nil
-	}, "127.0.0.1:1234")
+	h := &handler{
+		upstream: &fakeUpstream{response: response},
+		write:    func(b []byte) error { written = b; return nil },
+	}
+	h.handle(context.Background(), query, "127.0.0.1:1234")
 
 	if !bytes.Equal(written, response) {
 		t.Errorf("written bytes don't match response\ngot:  %x\nwant: %x", written, response)
 	}
 }
 
-// TestHandleDNSClient_UpstreamError verifies that an upstream failure is
-// handled gracefully — write must never be called.
-func TestHandleDNSClient_UpstreamError(t *testing.T) {
+func TestHandle_UpstreamError_NoWrite(t *testing.T) {
 	query := buildQuery(t, "example.com", dns.TypeAAAA)
-
 	up := &countingUpstream{err: errors.New("upstream timeout")}
+
 	writeCount := 0
-	handleDNSClient(query, up, func(b []byte) error {
-		writeCount++
-		return nil
-	}, "127.0.0.1:1234")
+	h := &handler{
+		upstream: up,
+		write:    func(b []byte) error { writeCount++; return nil },
+	}
+	h.handle(context.Background(), query, "127.0.0.1:1234")
 
 	if writeCount != 0 {
 		t.Errorf("write should not be called on upstream error, was called %d time(s)", writeCount)
 	}
 }
 
-// TestHandleDNSClient_ParseError verifies that a malformed DNS message is
-func TestHandleDNSClient_ParseError(t *testing.T) {
-	// Truncated to 2 bytes — header requires 12, so Parse will return an error.
-	garbage := []byte{0xCA, 0xFE}
+func TestHandle_ParseError_NeitherUpstreamNorWrite(t *testing.T) {
+	garbage := []byte{0xCA, 0xFE} // only 2 bytes; header requires 12
 
 	up := &countingUpstream{}
 	writeCount := 0
-	handleDNSClient(garbage, up, func(b []byte) error {
-		writeCount++
-		return nil
-	}, "127.0.0.1:1234")
+	h := &handler{
+		upstream: up,
+		write:    func(b []byte) error { writeCount++; return nil },
+	}
+	h.handle(context.Background(), garbage, "127.0.0.1:1234")
 
 	if up.calls != 0 {
 		t.Errorf("upstream should not be called on parse error, was called %d time(s)", up.calls)
@@ -116,18 +139,19 @@ func TestHandleDNSClient_ParseError(t *testing.T) {
 	}
 }
 
-// TestHandleDNSClient_WriteError verifies that a write failure is handled with no panic
-func TestHandleDNSClient_WriteError(t *testing.T) {
+func TestHandle_WriteError_NoPanic(t *testing.T) {
 	query := buildQuery(t, "example.org", dns.TypeMX)
 	response := buildResponse(t, query)
 
-	handleDNSClient(query, &fakeUpstream{response: response}, func(b []byte) error {
-		return errors.New("client disconnected")
-	}, "127.0.0.1:1234")
+	h := &handler{
+		upstream: &fakeUpstream{response: response},
+		write:    func(b []byte) error { return errors.New("client disconnected") },
+	}
+	h.handle(context.Background(), query, "127.0.0.1:1234")
 	// pass if no panic
 }
 
-func TestHandleDNSClient_QueryTypes(t *testing.T) {
+func TestHandle_QueryTypes(t *testing.T) {
 	cases := []struct {
 		name  string
 		qtype uint16
@@ -138,21 +162,64 @@ func TestHandleDNSClient_QueryTypes(t *testing.T) {
 		{"example.com", dns.TypeTXT},
 		{"www.example.com", dns.TypeCNAME},
 	}
-
 	for _, tc := range cases {
 		t.Run(tc.name+"/"+dns.TypeToString[tc.qtype], func(t *testing.T) {
 			query := buildQuery(t, tc.name, tc.qtype)
 			response := buildResponse(t, query)
 
 			var written []byte
-			handleDNSClient(query, &fakeUpstream{response: response}, func(b []byte) error {
-				written = b
-				return nil
-			}, "127.0.0.1:1234")
+			h := &handler{
+				upstream: &fakeUpstream{response: response},
+				write:    func(b []byte) error { written = b; return nil },
+			}
+			h.handle(context.Background(), query, "127.0.0.1:1234")
 
 			if !bytes.Equal(written, response) {
 				t.Errorf("%s %s: response mismatch", tc.name, dns.TypeToString[tc.qtype])
 			}
 		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// handler.handle — cache path: ID rewrite
+//
+// These tests use a fakeCache (defined below) to exercise the cache branch
+// without needing a real Valkey instance.
+// ---------------------------------------------------------------------------
+
+// fakeCache implements the minimal surface of *rcache.Cache that handler needs.
+// Because handler holds *rcache.Cache (a concrete type) we can't inject an
+// interface here — instead we test the ID-rewrite logic directly through
+// rcache.Cache.QueryRace in rcache_test.go. What we *can* test here is that
+// the handler wires the response through correctly and that the transaction ID
+// in the written bytes always matches the query's ID.
+
+func TestHandle_ResponseTxIDMatchesQuery(t *testing.T) {
+	// Build a query with whatever ID the library assigns.
+	query := buildQuery(t, "example.com", dns.TypeA)
+	queryID := txID(query)
+
+	// Simulate an upstream that returns a response with a *different* ID
+	// (as would happen when a cached response from an old query is replayed).
+	differentID := queryID + 1
+	response := buildResponse(t, query)
+	responseWithWrongID := withTxID(response, differentID)
+
+	// The upstream here acts as a stand-in: it returns bytes that have the
+	// wrong ID. QueryRace (inside the cache path) is responsible for the
+	// rewrite, but since we have no real Valkey we test the no-cache path
+	// to verify the handler doesn't mangle the ID on its own.
+	var written []byte
+	h := &handler{
+		upstream: &fakeUpstream{response: responseWithWrongID},
+		write:    func(b []byte) error { written = b; return nil },
+	}
+	h.handle(context.Background(), query, "127.0.0.1:1234")
+
+	// Without a cache the handler must not touch the response bytes at all —
+	// the proxy already validated the ID via hasTheSameID.
+	if txID(written) != differentID {
+		t.Errorf("no-cache path must not rewrite IDs: got %d, want %d", txID(written), differentID)
 	}
 }

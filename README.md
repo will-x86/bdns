@@ -40,7 +40,7 @@ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
 - [x] DoT Support
 - [ ] DoH Support
 - [x] Forward uncached queries upstream (1.1.1.1 / 8.8.8.8)
-- [ ] Redis TTL cache for resolved domains
+- [x] Redis TTL cache for resolved domains
 - [ ] SQLite schema: domains, categories, block_rules
 - [ ] Blocklist ingestion (import from community lists e.g. Steven Black, OISD)
 - [ ] SNI -> user_id parsing for DoT 

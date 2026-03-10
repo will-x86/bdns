@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// Types
 type DNSMessage struct {
 	Header      Header
 	Questions   []Question
@@ -97,8 +96,6 @@ func className(c uint16) string {
 	}
 	return fmt.Sprintf("CLASS%d", c)
 }
-
-// ---- ResourceRecord human-readable RData ----------------------------------
 
 // RDataString returns pretty print representation of the RData field.
 // raw bytes on RData directly.
