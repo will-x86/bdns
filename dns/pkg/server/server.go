@@ -10,7 +10,6 @@ import (
 
 	"github.com/will-x86/bdns/dns/pkg/parser"
 	"github.com/will-x86/bdns/dns/pkg/proxy"
-	//"github.com/will-x86/bdns/dns/pkg/rcache"
 )
 
 type DNSUpstream interface {
@@ -18,11 +17,6 @@ type DNSUpstream interface {
 }
 
 func RunServer(ctx context.Context, certFile, keyFile string) {
-	/*cache, err := rcache.New("127.0.0.1:6379")
-	if err != nil {
-		log.Fatalf("Failed to initialize valkey client: %v\n", err)
-	}*/
-
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		log.Fatal(err)
@@ -92,16 +86,24 @@ func handleDNSClient(requestBytes []byte, upstream DNSUpstream, write func([]byt
 		log.Printf("Error parsing DNS message: %v\n", err)
 		return
 	}
-	for i, q := range message.Questions {
-		log.Printf("Question %d: QName=%s, QType=%d, QClass=%d\n", i+1, q.QName, q.QType, q.QClass)
-	}
+	log.Printf("Parsed request: %s", message.String())
 
 	responseBytes, err := upstream.SendQuery(requestBytes)
-	//proxy := proxy.NewTLSClient("1.1.1.1", 853, "cloudflare-dns.com")
+	if err != nil {
+		log.Printf("Error sending query to upstream DNS server: %v\n", err)
+		return
+	}
 
 	if err := write(responseBytes); err != nil {
 		log.Printf("Error sending response to client %s: %v\n", remoteAddr, err)
 		return
 	}
 	log.Printf("Sent response to client %s\n", remoteAddr)
+	resParser := parser.Message()
+	err = resParser.Parse(responseBytes)
+	if err != nil {
+		log.Printf("Error parsing DNS response: %v\n", err)
+		return
+	}
+	log.Printf("parsed response %s", resParser.String())
 }
