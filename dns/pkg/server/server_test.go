@@ -10,10 +10,6 @@ import (
 	dns "codeberg.org/miekg/dns"
 )
 
-// ---------------------------------------------------------------------------
-// Test doubles
-// ---------------------------------------------------------------------------
-
 type fakeUpstream struct {
 	response []byte
 	err      error
@@ -34,10 +30,6 @@ func (c *countingUpstream) SendQuery(_ []byte) ([]byte, error) {
 	c.calls++
 	return c.response, c.err
 }
-
-// ---------------------------------------------------------------------------
-// Wire-format helpers
-// ---------------------------------------------------------------------------
 
 // buildQuery constructs a DNS query for name & type and returns wire bytes.
 func buildQuery(t *testing.T, name string, qtype uint16) []byte {
@@ -83,10 +75,6 @@ func withTxID(b []byte, id uint16) []byte {
 	binary.BigEndian.PutUint16(out[0:2], id)
 	return out
 }
-
-// ---------------------------------------------------------------------------
-// handler.handle — no-cache path
-// ---------------------------------------------------------------------------
 
 func TestHandle_HappyPath(t *testing.T) {
 	query := buildQuery(t, "google.com", dns.TypeA)
@@ -181,22 +169,9 @@ func TestHandle_QueryTypes(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// handler.handle — cache path: ID rewrite
-//
 // These tests use a fakeCache (defined below) to exercise the cache branch
-// without needing a real Valkey instance.
-// ---------------------------------------------------------------------------
-
-// fakeCache implements the minimal surface of *rcache.Cache that handler needs.
-// Because handler holds *rcache.Cache (a concrete type) we can't inject an
-// interface here — instead we test the ID-rewrite logic directly through
-// rcache.Cache.QueryRace in rcache_test.go. What we *can* test here is that
-// the handler wires the response through correctly and that the transaction ID
-// in the written bytes always matches the query's ID.
 
 func TestHandle_ResponseTxIDMatchesQuery(t *testing.T) {
-	// Build a query with whatever ID the library assigns.
 	query := buildQuery(t, "example.com", dns.TypeA)
 	queryID := txID(query)
 
@@ -206,10 +181,6 @@ func TestHandle_ResponseTxIDMatchesQuery(t *testing.T) {
 	response := buildResponse(t, query)
 	responseWithWrongID := withTxID(response, differentID)
 
-	// The upstream here acts as a stand-in: it returns bytes that have the
-	// wrong ID. QueryRace (inside the cache path) is responsible for the
-	// rewrite, but since we have no real Valkey we test the no-cache path
-	// to verify the handler doesn't mangle the ID on its own.
 	var written []byte
 	h := &handler{
 		upstream: &fakeUpstream{response: responseWithWrongID},
@@ -217,8 +188,6 @@ func TestHandle_ResponseTxIDMatchesQuery(t *testing.T) {
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
-	// Without a cache the handler must not touch the response bytes at all —
-	// the proxy already validated the ID via hasTheSameID.
 	if txID(written) != differentID {
 		t.Errorf("no-cache path must not rewrite IDs: got %d, want %d", txID(written), differentID)
 	}
