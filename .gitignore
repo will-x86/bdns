@@ -4,3 +4,4 @@ tmp
 data
 .crt
 .key
+*.db

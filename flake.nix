@@ -47,6 +47,8 @@
             ## tauri end
             knot-dns
             air
+            goose
+            sqlite
           ];
           shellHook = ''
             alias ls=eza
