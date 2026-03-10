@@ -1,3 +1,4 @@
+// / Proxies to cloudflare, should later on retry if fail
 package proxy
 
 import (
@@ -13,16 +14,11 @@ import (
 type Client struct {
 	serverAddress string
 	port          int
-	useTLS        bool
 	serverName    string // SNI for TLS
 }
 
-func NewClient(address string, port int) *Client {
-	return &Client{serverAddress: address, port: port}
-}
-
 func NewTLSClient(address string, port int, serverName string) *Client {
-	return &Client{serverAddress: address, port: port, useTLS: true, serverName: serverName}
+	return &Client{serverAddress: address, port: port, serverName: serverName}
 }
 
 func (c *Client) isIPV4() (bool, error) {
@@ -53,34 +49,7 @@ func (c *Client) SendQuery(query []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	if c.useTLS {
-		return c.sendQueryTLS(addr, query)
-	}
-	return c.sendQueryUDP(addr, query)
-}
-
-func (c *Client) sendQueryUDP(addr string, query []byte) ([]byte, error) {
-	conn, err := net.Dial("udp", addr)
-	if err != nil {
-		return nil, fmt.Errorf("dial udp: %w", err)
-	}
-	defer conn.Close()
-
-	if _, err = conn.Write(query); err != nil {
-		return nil, fmt.Errorf("write udp: %w", err)
-	}
-
-	response := make([]byte, 4096)
-	n, err := conn.Read(response)
-	if err != nil {
-		return nil, fmt.Errorf("read udp: %w", err)
-	}
-
-	response = response[:n]
-	if !hasTheSameID(query, response) {
-		return nil, fmt.Errorf("response ID mismatch")
-	}
-	return response, nil
+	return c.sendQueryTLS(addr, query)
 }
 
 func (c *Client) sendQueryTLS(addr string, query []byte) ([]byte, error) {
