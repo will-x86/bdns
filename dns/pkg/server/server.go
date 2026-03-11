@@ -8,21 +8,28 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
+	"time"
 
+	"github.com/will-x86/bdns/dns/pkg/db"
 	"github.com/will-x86/bdns/dns/pkg/parser"
 	"github.com/will-x86/bdns/dns/pkg/proxy"
 	"github.com/will-x86/bdns/dns/pkg/rcache"
+	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
 type DNSUpstream interface {
 	SendQuery([]byte) ([]byte, error)
 }
 
-// handler holds stuff for serving a single Connection
+// handler holds stuff for serving a single connection.
 type handler struct {
 	upstream DNSUpstream
 	cache    *rcache.Cache
 	write    func([]byte) error
+	engine   *rule.Engine
+	stores   rule.Stores
+	userID   string
 }
 
 func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr string) {
@@ -39,7 +46,6 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 		log.Printf("Request from %s has no questions — dropping\n", remoteAddr)
 		return
 	}
-	// Should only process first
 	if len(msg.Questions) > 1 {
 		log.Printf("Request from %s has %d questions\n", remoteAddr, len(msg.Questions))
 	}
@@ -48,6 +54,45 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 	qtypeStr, ok := parser.TypeToString[q.QType]
 	if !ok {
 		qtypeStr = "UNKNOWN"
+	}
+
+	// Refuse non-authed users
+	if h.userID == "" {
+		log.Printf("No SNI from %s — refusing\n", remoteAddr)
+		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
+			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
+		}
+		return
+	}
+	if userExists, err := db.UserExists(h.userID); err != nil {
+		log.Printf("DB error checking user %s: %v\n", h.userID, err)
+		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
+			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
+		}
+		return
+	} else if !userExists {
+		log.Printf("User %s not found in DB\n", h.userID)
+		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
+			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
+		}
+		return
+	}
+
+	decision, ruleErr := h.engine.Evaluate(ctx, &rule.RuleContext{
+		Domain: q.QName,
+		UserID: h.userID,
+		Now:    time.Now(),
+		Stores: h.stores,
+	})
+	if ruleErr != nil {
+		log.Printf("Rule engine error for %s %s: %v\n", q.QName, qtypeStr, ruleErr)
+		// Fail open
+	} else if decision.Verdict == rule.VerdictBlock {
+		log.Printf("Blocked %s %s for user %s: %s\n", q.QName, qtypeStr, h.userID, decision.Reason)
+		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
+			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
+		}
+		return
 	}
 
 	var (
@@ -88,6 +133,32 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 	log.Printf("Parsed response %s", resMsg.Header.String())
 }
 
+// Builds refused response (RCODE=5)
+// Preserves tID and qSection
+func buildRefusedResponse(query []byte) []byte {
+	if len(query) < 12 {
+		return nil
+	}
+	resp := make([]byte, len(query))
+	copy(resp, query)
+
+	// Flags: QR=1 (response), Opcode=0, AA=0, TC=0, RD = copy from query,
+	// RA=0, Z=0, RCODE=5 (REFUSED).
+	rdBit := query[2] & 0x01 // RD from query
+	resp[2] = 0x80 | rdBit   // QR=1, Opcode=0, AA=0, TC=0, RD=original
+	resp[3] = 0x05           // RA=0, Z=0, RCODE=5
+
+	// Zero out answer/authority/additional counts.
+	resp[6] = 0
+	resp[7] = 0
+	resp[8] = 0
+	resp[9] = 0
+	resp[10] = 0
+	resp[11] = 0
+
+	return resp
+}
+
 func RunServer(ctx context.Context, certFile, keyFile string) {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
@@ -114,9 +185,17 @@ func RunServer(ctx context.Context, certFile, keyFile string) {
 	}
 	cache, err := rcache.New(valkeyAddr)
 	if err != nil {
-		log.Printf("could not connect to Valkey at %s: %v -continuing without cache", valkeyAddr, err)
+		log.Printf("could not connect to Valkey at %s: %v — continuing without cache", valkeyAddr, err)
 		cache = nil
 	}
+
+	stores := db.NewStores(db.GetDB())
+	ruleStores := rule.Stores{
+		Whitelist: stores,
+		Category:  stores,
+		Resolve:   stores.ResolveCategory,
+	}
+	engine := proxy.BuildEngine(ruleStores)
 
 	upstream := proxy.NewTLSClient("1.1.1.1", 853, "cloudflare-dns.com")
 	log.Println("Listening on TLS :8533")
@@ -134,9 +213,16 @@ func RunServer(ctx context.Context, certFile, keyFile string) {
 				log.Printf("TLS handshake error: %v\n", err)
 				return
 			}
-			log.Printf("Client SNI: %s\n", tlsConn.ConnectionState().ServerName)
+			fullSNI := tlsConn.ConnectionState().ServerName
+			var userID string
+			if strings.Contains(fullSNI, ".") {
+				parts := strings.SplitN(fullSNI, ".", 2)
+				userID = parts[0]
+			}
 
-			// TCP DNS: 2-byte big-endian length prefix per RFC 1035 4.2.2 - https://datatracker.ietf.org/doc/html/rfc1035#section-4.2.2
+			log.Printf("Client SNI: %s\n", userID)
+
+			// TCP DNS: 2-byte big-endian length prefix per RFC 1035 4.2.2
 			var msgLen uint16
 			if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
 				log.Printf("Error reading TCP length prefix: %v\n", err)
@@ -157,6 +243,9 @@ func RunServer(ctx context.Context, certFile, keyFile string) {
 					_, err := c.Write(append(prefix, response...))
 					return err
 				},
+				engine: engine,
+				stores: ruleStores,
+				userID: userID,
 			}
 			h.handle(ctx, buf, c.RemoteAddr().String())
 		}(conn)

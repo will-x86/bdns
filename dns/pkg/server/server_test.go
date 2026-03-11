@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	dns "codeberg.org/miekg/dns"
+	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
 type fakeUpstream struct {
@@ -17,6 +18,10 @@ type fakeUpstream struct {
 
 func (f *fakeUpstream) SendQuery(_ []byte) ([]byte, error) {
 	return f.response, f.err
+}
+
+func passthroughEngine() *rule.Engine {
+	return rule.NewEngine()
 }
 
 // countingUpstream lets tests assert how many times the upstream was called.
@@ -31,7 +36,7 @@ func (c *countingUpstream) SendQuery(_ []byte) ([]byte, error) {
 	return c.response, c.err
 }
 
-// buildQuery constructs a DNS query for name & type and returns wire bytes.
+// DNS query for name & type
 func buildQuery(t *testing.T, name string, qtype uint16) []byte {
 	t.Helper()
 	m := dns.NewMsg(name, qtype)
@@ -46,7 +51,7 @@ func buildQuery(t *testing.T, name string, qtype uint16) []byte {
 	return out
 }
 
-// buildResponse flips QR=1 on the query wire bytes and returns response wire bytes.
+// flips QR=1 on the query
 func buildResponse(t *testing.T, queryWire []byte) []byte {
 	t.Helper()
 	var m dns.Msg
@@ -63,12 +68,12 @@ func buildResponse(t *testing.T, queryWire []byte) []byte {
 	return out
 }
 
-// txID returns the transaction ID from wire bytes (first 2 bytes, big-endian).
+// transaction ID from bytes (first 2 bytes, big-endian).
 func txID(b []byte) uint16 {
 	return binary.BigEndian.Uint16(b[0:2])
 }
 
-// withTxID returns a copy of the wire bytes with the transaction ID replaced.
+// withTxID - copy of the bytes with the transaction ID replaced.
 func withTxID(b []byte, id uint16) []byte {
 	out := make([]byte, len(b))
 	copy(out, b)
@@ -84,6 +89,8 @@ func TestHandle_HappyPath(t *testing.T) {
 	h := &handler{
 		upstream: &fakeUpstream{response: response},
 		write:    func(b []byte) error { written = b; return nil },
+		engine:   passthroughEngine(),
+		userID:   "testuser",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
@@ -100,6 +107,8 @@ func TestHandle_UpstreamError_NoWrite(t *testing.T) {
 	h := &handler{
 		upstream: up,
 		write:    func(b []byte) error { writeCount++; return nil },
+		engine:   passthroughEngine(),
+		userID:   "testuser",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
@@ -134,6 +143,8 @@ func TestHandle_WriteError_NoPanic(t *testing.T) {
 	h := &handler{
 		upstream: &fakeUpstream{response: response},
 		write:    func(b []byte) error { return errors.New("client disconnected") },
+		engine:   passthroughEngine(),
+		userID:   "testuser",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 	// pass if no panic
@@ -159,6 +170,8 @@ func TestHandle_QueryTypes(t *testing.T) {
 			h := &handler{
 				upstream: &fakeUpstream{response: response},
 				write:    func(b []byte) error { written = b; return nil },
+				engine:   passthroughEngine(),
+				userID:   "testuser",
 			}
 			h.handle(context.Background(), query, "127.0.0.1:1234")
 
@@ -169,14 +182,11 @@ func TestHandle_QueryTypes(t *testing.T) {
 	}
 }
 
-// These tests use a fakeCache (defined below) to exercise the cache branch
-
 func TestHandle_ResponseTxIDMatchesQuery(t *testing.T) {
 	query := buildQuery(t, "example.com", dns.TypeA)
 	queryID := txID(query)
 
 	// Simulate an upstream that returns a response with a *different* ID
-	// (as would happen when a cached response from an old query is replayed).
 	differentID := queryID + 1
 	response := buildResponse(t, query)
 	responseWithWrongID := withTxID(response, differentID)
@@ -185,10 +195,42 @@ func TestHandle_ResponseTxIDMatchesQuery(t *testing.T) {
 	h := &handler{
 		upstream: &fakeUpstream{response: responseWithWrongID},
 		write:    func(b []byte) error { written = b; return nil },
+		engine:   passthroughEngine(),
+		userID:   "testuser",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
 	if txID(written) != differentID {
 		t.Errorf("no-cache path must not rewrite IDs: got %d, want %d", txID(written), differentID)
+	}
+}
+
+func TestHandle_NoSNI_Refused(t *testing.T) {
+	query := buildQuery(t, "google.com", dns.TypeA)
+
+	up := &countingUpstream{}
+	var written []byte
+	h := &handler{
+		upstream: up,
+		write:    func(b []byte) error { written = b; return nil },
+		engine:   passthroughEngine(),
+		userID:   "", // no SNI
+	}
+	h.handle(context.Background(), query, "127.0.0.1:1234")
+
+	if up.calls != 0 {
+		t.Errorf("upstream must not be called for unauthenticated client, was called %d time(s)", up.calls)
+	}
+	if written == nil {
+		t.Fatal("expected a REFUSED response to be written, got nil")
+	}
+	// Byte 3 (low flags byte): RCODE is the low 4 bits — must be 5 (REFUSED).
+	rcode := written[3] & 0x0F
+	if rcode != 5 {
+		t.Errorf("expected RCODE=5 (REFUSED), got %d", rcode)
+	}
+	// Transaction ID must be preserved from the query.
+	if txID(written) != txID(query) {
+		t.Errorf("REFUSED response must preserve query transaction ID: got %d, want %d", txID(written), txID(query))
 	}
 }

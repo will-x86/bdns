@@ -7,10 +7,42 @@ import (
 	"strings"
 )
 
-const (
-	stevenBlackSocialURL  = "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social-only/hosts"
-	stevenBlackSocialName = "StevenBlack-social"
-)
+type BlocklistEntry struct {
+	Name         string
+	Url          string
+	Category     string
+	LastSyncedAt int64
+	EntryCount   int
+}
+
+// Fakenews, Gambling, Porn, Social, Unified hosts ( adware + malware)
+var StevenBlackSources = []BlocklistEntry{
+	{
+		Name:     "StevenBlack FakeNews",
+		Url:      "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-only/hosts",
+		Category: "fakenews",
+	},
+	{
+		Name:     "StevenBlack Gambling",
+		Url:      "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-only/hosts",
+		Category: "gambling",
+	},
+	{
+		Name:     "StevenBlack Porn",
+		Url:      "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts",
+		Category: "porn",
+	},
+	{
+		Name:     "StevenBlack Social",
+		Url:      "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social-only/hosts",
+		Category: "social",
+	},
+	{
+		Name:     "StevenBlack adware+malware",
+		Url:      "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/unified-hosts-filtering-only/hosts",
+		Category: "unified",
+	},
+}
 
 func sourceIDForName(name, url, category string) (string, error) {
 	var id string
@@ -19,81 +51,71 @@ func sourceIDForName(name, url, category string) (string, error) {
 		return id, nil
 	}
 	err = db.QueryRow(
-		`INSERT INTO blocklist_sources (name, url, category, enabled, last_synced_at)
-		 VALUES (?, ?, ?, 1, unixepoch()) RETURNING id`,
+		`INSERT INTO blocklist_sources (name, url, category, last_synced_at)
+		 VALUES (?, ?, ?, unixepoch()) RETURNING id`,
 		name, url, category,
 	).Scan(&id)
 	return id, err
 }
 
-func IngestStevenBlack() error {
-	resp, err := http.Get(stevenBlackSocialURL)
+func Ingest() error {
+	for _, source := range StevenBlackSources {
+		if err := ingestSource(source); err != nil {
+			return fmt.Errorf("ingest %s: %w", source.Name, err)
+		}
+	}
+	return nil
+}
+func ingestSource(source BlocklistEntry) error {
+	sourceID, err := sourceIDForName(source.Name, source.Url, source.Category)
 	if err != nil {
-		return fmt.Errorf("download: %w", err)
+		return fmt.Errorf("sourceIDForName: %w", err)
+	}
+
+	resp, err := http.Get(source.Url)
+
+	if err != nil {
+		return fmt.Errorf("http.Get: %w", err)
 	}
 	defer resp.Body.Close()
 
-	sourceID, err := sourceIDForName(stevenBlackSocialName, stevenBlackSocialURL, "social")
-	if err != nil {
-		return fmt.Errorf("resolve source: %w", err)
-	}
+	scanner := bufio.NewScanner(resp.Body)
 
 	tx, err := db.Begin()
 	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
+		return fmt.Errorf("db.Begin: %w", err)
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(
-		`INSERT OR IGNORE INTO blocklist_entries (domain, source_id, category) VALUES (?, ?, ?)`,
-	)
-	if err != nil {
-		return fmt.Errorf("prepare: %w", err)
-	}
-	defer stmt.Close()
-
-	var category string
-	var total int
-
-	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if payload, ok := strings.CutPrefix(line, "# "); ok {
-			if !strings.Contains(payload, ":") && !strings.Contains(payload, " ") {
-				category = strings.ToLower(payload)
-			}
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") || line == "" {
 			continue
 		}
-		if category == "" || !strings.HasPrefix(line, "0.0.0.0 ") {
-			continue
-		}
-
 		fields := strings.Fields(line)
 		if len(fields) < 2 {
 			continue
 		}
 		domain := fields[1]
-		if domain == "0.0.0.0" || strings.HasPrefix(domain, "localhost") {
-			continue
-		}
 
-		if _, err := stmt.Exec(domain, sourceID, category); err != nil {
-			return fmt.Errorf("insert %s: %w", domain, err)
+		if _, err := tx.Exec(
+			`INSERT OR IGNORE INTO blocklist_entries (source_id, domain,category) VALUES (?, ?, ?)`,
+			sourceID, domain, source.Category,
+		); err != nil {
+			return fmt.Errorf("insert entry: %w", err)
 		}
-		total++
 	}
+
 	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("scan: %w", err)
+		return fmt.Errorf("scanner.Err: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit: %w", err)
+	if _, err := tx.Exec(
+		`UPDATE blocklist_sources SET last_synced_at = unixepoch() WHERE id = ?`,
+		sourceID,
+	); err != nil {
+		return fmt.Errorf("update last_synced_at: %w", err)
 	}
 
-	_, err = db.Exec(
-		`UPDATE blocklist_sources SET entry_count = ?, last_synced_at = unixepoch() WHERE id = ?`,
-		total, sourceID,
-	)
-	return err
+	return tx.Commit()
 }

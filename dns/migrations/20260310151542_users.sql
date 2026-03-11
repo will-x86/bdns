@@ -2,6 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE users (
     id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4)))),
+    timezone TEXT NOT NULL,        -- "Europe/London"
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 CREATE TABLE profiles (

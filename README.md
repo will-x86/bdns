@@ -62,17 +62,18 @@ openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
 - [x] Forward uncached queries upstream (1.1.1.1 / 8.8.8.8)
 - [x] Redis TTL cache for resolved domains
 - [x] SQLite schema: domains, categories, block_rules
-- [-] Blocklist ingestion (import from community lists e.g. Steven Black, OISD)
-- [ ] SNI -> user_id parsing for DoT 
-- [ ] Basic allow/block rule engine
+- [ ] Blocklist ingestion (import from community lists e.g. Steven Black, OISD)
+    - [x] One time run manual import - multiple categories
+    - [ ] Automatic ingestion & more lists .. 
+- [x] SNI -> user_id parsing for DoT 
 
 
 ## Blocking rules 
-- [ ] - Is this domain permanently whitelisted -> per profile # Primarily for "oops need this domain"
+- [x] - Is this domain permanently whitelisted -> per profile # Primarily for "oops need this domain"
 ^^ SQLite 
-- [ ] - Is this domain temporarily whitelisted -> end of day whitelist 
+- [x] - Is this domain temporarily whitelisted -> end of day whitelist 
 ^^ SQLite
-- [ ] - Is this category fully blocked for this profile ? # Primarily for ADS/Porn/Gambling
+- [x] - Is this category fully blocked for this profile ? # Primarily for ADS/Porn/Gambling
 ^^ SQLite
 - [ ] - Does this user have hard time blocks for this category ( No social media after 10 regardless ) 
 ^^ SQLite
