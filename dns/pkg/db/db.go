@@ -5,10 +5,22 @@ import (
 	"os"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 )
 
 var db *sqlx.DB
+
+func runMigrations(db *sql.DB, migrationsPath string) {
+	if err := goose.SetDialect("postgres"); err != nil {
+		panic(err)
+	}
+
+	if err := goose.Up(db, migrationsPath); err != nil {
+		panic(err)
+	}
+
+}
 
 func InitDB(dbPath string) error {
 	var err error
@@ -20,6 +32,7 @@ func InitDB(dbPath string) error {
 	if err != nil {
 		return err
 	}
+	runMigrations(db.DB, "./migrations/")
 	return nil
 }
 
