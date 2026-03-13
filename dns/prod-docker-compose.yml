@@ -6,7 +6,7 @@ services:
       - 6379:6379 # HOST_PORT:CONTAINER_PORT
     volumes:
       - ./valkey/data:/data
-      - ./valkey/conf:/usr/local/etc/valkey
+      - ./valkey/conf/valkey.conf:/usr/local/etc/valkey/valkey.conf
     command: ["valkey-server", "/usr/local/etc/valkey/valkey.conf"]
     networks:
       - valkey_network
