@@ -32,7 +32,7 @@ services:
     build:
       context: .
     ports:
-      - ${PORT}:${PORT:-853}
+      - ${PORT:-853}:${PORT:-853}
     volumes:
       - ${CERT_DIR:-/cert}:/cert
     environment:
