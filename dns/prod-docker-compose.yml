@@ -34,11 +34,11 @@ services:
     ports:
       - ${PORT}:${PORT}
     volumes:
-      - "${CERT_DIR-.}:/cert"
+      - "${CERT_DIR-/cert}:/cert"
     environment:
       KEY_PATH: ${KEY_PATH-/cert/server.key}
       CRT_PATH: ${CRT_PATH-/cert/server.crt}
-      PORT: ${PORT}
+      PORT: ${PORT:-853}
     depends_on:
       - valkey
 networks:
