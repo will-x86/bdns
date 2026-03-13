@@ -204,7 +204,7 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 	engine := proxy.BuildEngine(ruleStores)
 
 	upstream := proxy.NewTLSClient("1.1.1.1", 853, "cloudflare-dns.com")
-	log.Println("Listening on TLS :8533")
+	log.Println("Listening on TLS: %s", c.Port)
 
 	for {
 		conn, err := listener.Accept()
