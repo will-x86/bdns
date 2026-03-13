@@ -37,6 +37,7 @@ services:
       - ${CERT_DIR:-/cert}:/cert
     environment:
       KEY_PATH: ${KEY_PATH-/cert/server.key}
+      VALKEY_ADDR: ${VALKEY_ADDR-valkey:6379}
       CRT_PATH: ${CRT_PATH-/cert/server.crt}
       PORT: ${PORT:-853}
     depends_on:
