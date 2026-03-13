@@ -12,7 +12,7 @@ import (
 var db *sqlx.DB
 
 func runMigrations(db *sql.DB, migrationsPath string) {
-	if err := goose.SetDialect("postgres"); err != nil {
+	if err := goose.SetDialect("sqlite"); err != nil {
 		panic(err)
 	}
 
