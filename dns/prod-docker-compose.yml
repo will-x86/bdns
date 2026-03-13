@@ -1,0 +1,46 @@
+services:
+  valkey:
+    container_name: valkey
+    image: valkey/valkey:9.0.3
+    ports:
+      - 6379:6379 # HOST_PORT:CONTAINER_PORT
+    volumes:
+      - ./valkey/data:/data
+      - ./valkey/conf:/usr/local/etc/valkey
+    command: ["valkey-server", "/usr/local/etc/valkey/valkey.conf"]
+    networks:
+      - valkey_network
+  redisinsight:
+    container_name: redisinsight
+    image: redis/redisinsight:latest
+    env_file:
+      - .env.valkey
+    environment:
+      RI_APP_PORT: ${RI_APP_PORT}
+      RI_APP_HOST: ${RI_APP_HOST}
+      RI_LOG_LEVEL: ${RI_LOG_LEVEL}
+      RI_FILES_LOGGER: ${RI_FILES_LOGGER}
+      RI_REDIS_HOST: ${RI_REDIS_HOST}
+    ports:
+      - 8001:5540
+    networks:
+      - valkey_network
+    depends_on:
+      - valkey
+  bdns:
+    container_name: bdns
+    build:
+      context: .
+    ports:
+      - ${PORT}:${PORT}
+    volumes:
+      - "${CERT_DIR-.}:/cert"
+    environment:
+      KEY_PATH: ${KEY_PATH-/cert/server.key}
+      CRT_PATH: ${CRT_PATH-/cert/server.crt}
+      PORT: ${PORT}
+    depends_on:
+      - valkey
+networks:
+  valkey_network:
+    driver: bridge

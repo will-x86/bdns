@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -159,13 +160,18 @@ func buildRefusedResponse(query []byte) []byte {
 	return resp
 }
 
-func RunServer(ctx context.Context, certFile, keyFile string) {
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+type ServerConfig struct {
+	Port       int
+	PrivateKey string
+	SignedKey  string
+}
+
+func RunServer(ctx context.Context, c *ServerConfig) {
+	cert, err := tls.LoadX509KeyPair(c.SignedKey, c.PrivateKey)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	listener, err := tls.Listen("tcp", ":8533", &tls.Config{
+	listener, err := tls.Listen("tcp", fmt.Sprintf(":%d", c.Port), &tls.Config{
 		Certificates: []tls.Certificate{cert},
 	})
 	if err != nil {
