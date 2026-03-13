@@ -15,7 +15,7 @@ CREATE TABLE blocklist_entries (
     PRIMARY KEY (domain, source_id)
 );
 CREATE INDEX idx_blocklist_domain ON blocklist_entries(domain);
-
+-- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
