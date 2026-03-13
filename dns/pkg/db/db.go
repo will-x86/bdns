@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"os"
 
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
@@ -22,6 +23,19 @@ func InitDB(dbPath string) error {
 	return nil
 }
 
+func Seed() {
+	path := "./seed.sql"
+
+	c, e := os.ReadFile(path)
+	if e != nil {
+		panic(e)
+	}
+	sql := string(c)
+	_, err := db.Exec(sql)
+	if err != nil {
+		panic(err)
+	}
+}
 func GetDB() *sqlx.DB {
 	return db
 }

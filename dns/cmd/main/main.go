@@ -16,8 +16,8 @@ import (
 
 func main() {
 	ingest := flag.Bool("ingest", false, "download and ingest StevenBlack blocklist")
+	seed := flag.Bool("seed", false, "seed with init.sql")
 	flag.Parse()
-
 	config := server.ServerConfig{}
 	if os.Getenv("KEY_PATH") == "" {
 		config.PrivateKey = "server.key"
@@ -38,6 +38,9 @@ func main() {
 
 	if err := db.InitDB("./app.db"); err != nil {
 		log.Fatalf("Failed to initialize database: %v\n", err)
+	}
+	if *seed {
+		db.Seed()
 	}
 
 	if *ingest {
