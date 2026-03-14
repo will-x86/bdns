@@ -95,7 +95,7 @@ kdig @127.0.0.1 -p 8533 +tls-sni=aabbccdd.dns.example.com google.com # accepted
 ^^ SQLite
 - [x] - Is this category fully blocked for this profile ? # Primarily for ADS/Porn/Gambling
 ^^ SQLite
-- [ ] - Does this user have hard time blocks for this category ( No social media after 10 regardless ) 
+- [x] - Does this user have hard time blocks for this category ( No social media after 10 regardless ) 
 ^^ SQLite
 - [ ] - Does the user have a friend ? 
 ^^ SQLite 
