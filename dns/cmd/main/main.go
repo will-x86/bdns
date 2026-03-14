@@ -9,33 +9,39 @@ import (
 	"os"
 	"strconv"
 
-	//	_ "github.com/joho/godotenv/autoload"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/will-x86/bdns/dns/pkg/db"
 	"github.com/will-x86/bdns/dns/pkg/server"
 )
 
+func getConfig() server.ServerConfig {
+	c := server.ServerConfig{
+		PrivateKey: os.Getenv("KEY_PATH"),
+		SignedKey:  os.Getenv("CRT_PATH"),
+	}
+
+	c.ValkeyAddr = func() string {
+		vA := os.Getenv("VALKEY_ADDR")
+		if vA == "" {
+			return "localhost:6379"
+		}
+		return vA
+	}()
+	c.Port = func() int {
+		port, err := strconv.Atoi(os.Getenv("PORT"))
+		if err != nil {
+			return port
+		}
+		return 8533
+
+	}()
+	return c
+}
 func main() {
 	ingest := flag.Bool("ingest", false, "download and ingest StevenBlack blocklist")
 	seed := flag.Bool("seed", false, "seed with init.sql")
 	flag.Parse()
-	config := server.ServerConfig{}
-	if os.Getenv("KEY_PATH") == "" {
-		config.PrivateKey = "server.key"
-		config.SignedKey = "server.crt"
-	} else {
-		config.PrivateKey = os.Getenv("KEY_PATH")
-		config.SignedKey = os.Getenv("CRT_PATH")
-	}
-	if os.Getenv("PORT") == "" {
-		config.Port = 8533
-	} else {
-		port, err := strconv.Atoi(os.Getenv("PORT"))
-		if err != nil {
-			config.Port = 8533
-		}
-		config.Port = port
-	}
-
+	config := getConfig()
 	if err := db.InitDB("./app.db"); err != nil {
 		log.Fatalf("Failed to initialize database: %v\n", err)
 	}

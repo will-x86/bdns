@@ -15,12 +15,6 @@ services:
     image: redis/redisinsight:latest
     env_file:
       - .env.valkey
-    environment:
-      RI_APP_PORT: ${RI_APP_PORT}
-      RI_APP_HOST: ${RI_APP_HOST}
-      RI_LOG_LEVEL: ${RI_LOG_LEVEL}
-      RI_FILES_LOGGER: ${RI_FILES_LOGGER}
-      RI_REDIS_HOST: ${RI_REDIS_HOST}
     ports:
       - 8001:5540
     networks:
@@ -34,12 +28,12 @@ services:
     ports:
       - ${PORT:-853}:${PORT:-853}
     volumes:
-      - ${CERT_DIR:-/cert}:/cert
+      - ${CERT_DIR:-/cert}:/cert #CERT_DIR must be the dir from *outside* the container
     environment:
-      KEY_PATH: ${KEY_PATH-/cert/server.key}
-      VALKEY_ADDR: ${VALKEY_ADDR-valkey:6379}
-      CRT_PATH: ${CRT_PATH-/cert/server.crt}
-      PORT: ${PORT:-853}
+      KEY_PATH: ${KEY_PATH} # KEY_PATH must be /cert/{FILE_NAME}
+      VALKEY_ADDR: ${VALKEY_ADDR}
+      CRT_PATH: ${CRT_PATH} # CRT_PATH must be /cert/{FILE_NAME}
+      PORT: ${PORT}
     depends_on:
       - valkey
 networks:

@@ -164,6 +164,7 @@ type ServerConfig struct {
 	Port       int
 	PrivateKey string
 	SignedKey  string
+	ValkeyAddr string
 }
 
 func RunServer(ctx context.Context, c *ServerConfig) {
@@ -185,13 +186,9 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 		listener.Close()
 	}()
 
-	valkeyAddr := os.Getenv("VALKEY_ADDR")
-	if valkeyAddr == "" {
-		valkeyAddr = "localhost:6379"
-	}
-	cache, err := rcache.New(valkeyAddr)
+	cache, err := rcache.New(c.ValkeyAddr)
 	if err != nil {
-		log.Printf("could not connect to Valkey at %s: %v — continuing without cache", valkeyAddr, err)
+		log.Printf("could not connect to Valkey at %s: %v — continuing without cache", c.ValkeyAddr, err)
 		cache = nil
 	}
 
