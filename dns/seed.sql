@@ -17,11 +17,22 @@ INSERT OR IGNORE INTO permanent_whitelists (profile_id, domain) VALUES ('ppqqrrs
 
 INSERT OR IGNORE INTO temporary_whitelists (profile_id, domain, expires_at) VALUES ('ppqqrrss', 'tracker.example.com', unixepoch()+1000);
 
-INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_time, day) VALUES('ppqqrrss', 'test', 36, 48, 1);
+
+
+-- test timeblocks
+INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_time, day, created_at) VALUES('ppqqrrss', 'test', 0, 95, 1, 0);
+INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_time, day, created_at) VALUES('ppqqrrss', 'test', 0, 95, 2, 0);
+INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_time, day, created_at) VALUES('ppqqrrss', 'test', 0, 95, 3, 0);
+INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_time, day, created_at) VALUES('ppqqrrss', 'test', 0, 95, 4, 0);
+INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_time, day, created_at) VALUES('ppqqrrss', 'test', 0, 95, 5, 0);
+INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_time, day, created_at) VALUES('ppqqrrss', 'test', 0, 95, 6, 0);
+INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_time, day, created_at) VALUES('ppqqrrss', 'test', 0, 95, 7, 0);
 
 
 -- Above should:
 -- Create a profile with userid ppqqrrss
 -- perm block porn + unified
 -- perm whitelist ads.example.com
--- temp whitelist ads.example.com
+-- temp whitelist tracker.example.com
+-- add category block from 
+-- block category "test" from mid-day till 12:00 ( 15 min blocks) every day

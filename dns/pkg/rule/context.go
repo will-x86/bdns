@@ -9,6 +9,7 @@ import (
 
 type ProfileStore interface {
 	ProfileExists(ctx context.Context, profileID string) (bool, error)
+	GetProfileWithUser(ctx context.Context, profileID string) (*models.Profile, *models.User, error)
 }
 
 type WhitelistStore interface {
@@ -44,15 +45,14 @@ type Stores struct {
 	Resolve CategoryResolver
 }
 
-// per-request - fields are lazily populated.
 type RuleContext struct {
 	Domain    string
 	ProfileID string
 	Now       time.Time
+	Profile   *models.Profile
+	User      *models.User
 
-	// lazy — nil means not yet fetched
 	category *string
-	//friendship *models.Friendship
 
 	Stores Stores
 }

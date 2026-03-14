@@ -58,13 +58,16 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 		}
 		return
 	}
-	if profileExists, err := h.stores.Profile.ProfileExists(ctx, h.profileID); err != nil {
-		log.Printf("DB error checking profile %s: %v\n", h.profileID, err)
+	// Pre-grab things every user has, other things such as category
+	profile, user, profileErr := h.stores.Profile.GetProfileWithUser(ctx, h.profileID)
+	if profileErr != nil {
+		log.Printf("DB error fetching profile %s: %v\n", h.profileID, profileErr)
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
 			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
 		}
 		return
-	} else if !profileExists {
+	}
+	if profile == nil {
 		log.Printf("Profile %s not found in DB\n", h.profileID)
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
 			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
@@ -76,6 +79,8 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 		Domain:    q.QName,
 		ProfileID: h.profileID,
 		Now:       time.Now(),
+		Profile:   profile,
+		User:      user,
 		Stores:    h.stores,
 	})
 	if ruleErr != nil {

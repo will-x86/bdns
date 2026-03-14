@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
 
@@ -70,6 +71,29 @@ func (s *SQLiteStores) ProfileExists(ctx context.Context, profileID string) (boo
 	return err == nil, err
 }
 
+func (s *SQLiteStores) GetProfileWithUser(ctx context.Context, profileID string) (*models.Profile, *models.User, error) {
+	var profile models.Profile
+	var user models.User
+	err := s.db.QueryRowContext(ctx,
+		`SELECT p.id, p.user_id, p.name, p.created_at,
+		        u.id, u.timezone, u.created_at
+		 FROM profiles p
+		 JOIN users u ON u.id = p.user_id
+		 WHERE p.id = ? LIMIT 1`,
+		profileID,
+	).Scan(
+		&profile.ID, &profile.UserID, &profile.Name, &profile.CreatedAt,
+		&user.ID, &user.Timezone, &user.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil, nil
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	return &profile, &user, nil
+}
+
 // Check DB if domain is categorized, if not ""
 func (s *SQLiteStores) ResolveCategory(ctx context.Context, domain string) (string, error) {
 	log.Printf("resolving category for domain: %s", domain)
@@ -85,6 +109,13 @@ func (s *SQLiteStores) ResolveCategory(ctx context.Context, domain string) (stri
 }
 
 func (s *SQLiteStores) GetTimeBlocks(ctx context.Context, profileID, category string) ([]models.TimeBlock, error) {
-	panic("ah")
-	return []models.TimeBlock{}, nil
+	log.Printf("Grabbing timeblocks for profile ID %s with category %s", profileID, category)
+	var timeblocks []models.TimeBlock
+	err := db.Select(&timeblocks, "SELECT * FROM user_time_blocks WHERE profile_id=? AND category=?", profileID, category)
+	fmt.Printf("%T", err)
+	if err != nil {
+		return []models.TimeBlock{}, err
+	}
+
+	return timeblocks, nil
 }
