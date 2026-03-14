@@ -36,3 +36,9 @@ INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_ti
 -- temp whitelist tracker.example.com
 -- add category block from 
 -- block category "test" from mid-day till 12:00 ( 15 min blocks) every day
+
+
+-- add user with no blocks
+
+INSERT OR IGNORE INTO users (id, timezone) VALUES ('noblock', 'Europe/London');
+INSERT OR IGNORE INTO profiles (id, user_id, name) VALUES ('noblock', 'noblock', 'test-no-block');
