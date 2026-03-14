@@ -28,12 +28,13 @@ services:
     ports:
       - ${PORT:-853}:${PORT:-853}
     volumes:
-      - ${CERT_DIR:?CERT_DIR must be set to the host directory containing your certs}:/cert
+      - ${CERT_DIR}:/cert
     environment:
-      KEY_PATH: ${KEY_PATH:?KEY_PATH must be set, e.g. /cert/server.key}
+      KEY_PATH: ${KEY_PATH}
       VALKEY_ADDR: ${VALKEY_ADDR:-valkey:6379}
-      CRT_PATH: ${CRT_PATH:?CRT_PATH must be set, e.g. /cert/server.crt}
+      CRT_PATH: ${CRT_PATH}
       PORT: ${PORT:-853}
+
     depends_on:
       - valkey
     networks:
