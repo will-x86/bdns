@@ -2,7 +2,7 @@
 dist
 tmp
 data
-.crt
-.key
+*.crt
+*.key
 *.db
-.env
+*.env

@@ -13,7 +13,13 @@ This DNS needs to bypass any proxy, primarily as we identify users via SNI ( whi
 
 ### Certificates
 
-
+#### locally
+( Just hit enter a bunch ! )
+```bash
+openssl genrsa -out server.key 2048\
+openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650\
+```
+#### production
 ```bash
 sudo apt install snapd
 sudo snap install certbot --classic
