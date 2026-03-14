@@ -1,3 +1,10 @@
+## AI Disclosure
+
+
+Tests will be written by AI/me, anything else will be written by me.
+
+I'm not very familiar with "proper" tests in Go
+
 # Bad DNS 
 
 
@@ -37,11 +44,9 @@ The idea is, you invite a friend, and you both have say ~6k queries for X catego
             - Shared is where user A&B have a pool of ~6k requests, if user A uses 6k, neither user can use limits.
             - Has this user got any limit left in the pool? 
 - Otherwise .. allow 
-### Gen certs
-```bash
-openssl genrsa -out server.key 2048
-openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
-```
+### Deploying 
+
+// see [dns/DEPLOY.md](/dns/DEPLOY.md)
 
 
 

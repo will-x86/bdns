@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+type UserStore interface {
+	UserExists(ctx context.Context, userID string) (bool, error)
+}
+
 type WhitelistStore interface {
 	IsPermanentlyWhitelisted(ctx context.Context, userID, domain string) (bool, error)
 	IsTemporarilyWhitelisted(ctx context.Context, userID, domain string, now time.Time) (bool, error)
@@ -29,6 +33,7 @@ type FriendshipStore interface {
 type CategoryResolver func(ctx context.Context, domain string) (string, error)
 
 type Stores struct {
+	User      UserStore
 	Whitelist WhitelistStore
 	Category  CategoryStore
 	//	TimeBlock  TimeBlockStore

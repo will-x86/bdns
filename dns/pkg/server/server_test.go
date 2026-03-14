@@ -20,6 +20,19 @@ func (f *fakeUpstream) SendQuery(_ []byte) ([]byte, error) {
 	return f.response, f.err
 }
 
+type fakeUserStore struct {
+	exists bool
+	err    error
+}
+
+func (f fakeUserStore) UserExists(_ context.Context, _ string) (bool, error) {
+	return f.exists, f.err
+}
+
+func userStores(exists bool) rule.Stores {
+	return rule.Stores{User: fakeUserStore{exists: exists}}
+}
+
 func passthroughEngine() *rule.Engine {
 	return rule.NewEngine()
 }
@@ -90,6 +103,7 @@ func TestHandle_HappyPath(t *testing.T) {
 		upstream: &fakeUpstream{response: response},
 		write:    func(b []byte) error { written = b; return nil },
 		engine:   passthroughEngine(),
+		stores:   userStores(true),
 		userID:   "testuser",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
@@ -108,6 +122,7 @@ func TestHandle_UpstreamError_NoWrite(t *testing.T) {
 		upstream: up,
 		write:    func(b []byte) error { writeCount++; return nil },
 		engine:   passthroughEngine(),
+		stores:   userStores(true),
 		userID:   "testuser",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
@@ -144,6 +159,7 @@ func TestHandle_WriteError_NoPanic(t *testing.T) {
 		upstream: &fakeUpstream{response: response},
 		write:    func(b []byte) error { return errors.New("client disconnected") },
 		engine:   passthroughEngine(),
+		stores:   userStores(true),
 		userID:   "testuser",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
@@ -171,6 +187,7 @@ func TestHandle_QueryTypes(t *testing.T) {
 				upstream: &fakeUpstream{response: response},
 				write:    func(b []byte) error { written = b; return nil },
 				engine:   passthroughEngine(),
+				stores:   userStores(true),
 				userID:   "testuser",
 			}
 			h.handle(context.Background(), query, "127.0.0.1:1234")
@@ -196,12 +213,63 @@ func TestHandle_ResponseTxIDMatchesQuery(t *testing.T) {
 		upstream: &fakeUpstream{response: responseWithWrongID},
 		write:    func(b []byte) error { written = b; return nil },
 		engine:   passthroughEngine(),
+		stores:   userStores(true),
 		userID:   "testuser",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
 	if txID(written) != differentID {
 		t.Errorf("no-cache path must not rewrite IDs: got %d, want %d", txID(written), differentID)
+	}
+}
+
+func TestHandle_UnknownUser_Refused(t *testing.T) {
+	query := buildQuery(t, "google.com", dns.TypeA)
+
+	up := &countingUpstream{}
+	var written []byte
+	h := &handler{
+		upstream: up,
+		write:    func(b []byte) error { written = b; return nil },
+		engine:   passthroughEngine(),
+		stores:   userStores(false),
+		userID:   "unknownuser",
+	}
+	h.handle(context.Background(), query, "127.0.0.1:1234")
+
+	if up.calls != 0 {
+		t.Errorf("upstream must not be called for unknown user, was called %d time(s)", up.calls)
+	}
+	if written == nil {
+		t.Fatal("expected a REFUSED response, got nil")
+	}
+	if rcode := written[3] & 0x0F; rcode != 5 {
+		t.Errorf("expected RCODE=5 (REFUSED), got %d", rcode)
+	}
+}
+
+func TestHandle_NilUserStore_Refused(t *testing.T) {
+	query := buildQuery(t, "google.com", dns.TypeA)
+
+	up := &countingUpstream{}
+	var written []byte
+	h := &handler{
+		upstream: up,
+		write:    func(b []byte) error { written = b; return nil },
+		engine:   passthroughEngine(),
+		stores:   rule.Stores{},
+		userID:   "someuser",
+	}
+	h.handle(context.Background(), query, "127.0.0.1:1234")
+
+	if up.calls != 0 {
+		t.Errorf("upstream must not be called with nil userChecker, was called %d time(s)", up.calls)
+	}
+	if written == nil {
+		t.Fatal("expected a REFUSED response, got nil")
+	}
+	if rcode := written[3] & 0x0F; rcode != 5 {
+		t.Errorf("expected RCODE=5 (REFUSED), got %d", rcode)
 	}
 }
 

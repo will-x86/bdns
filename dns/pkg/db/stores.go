@@ -56,6 +56,18 @@ func (s *SQLiteStores) IsCategoryBlocked(ctx context.Context, userID, category s
 	return err == nil, err
 }
 
+func (s *SQLiteStores) UserExists(ctx context.Context, userID string) (bool, error) {
+	var exists int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT 1 FROM users WHERE id = ? LIMIT 1`,
+		userID,
+	).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 // Check DB if domain is categorized, if not ""
 func (s *SQLiteStores) ResolveCategory(ctx context.Context, domain string) (string, error) {
 	var category string

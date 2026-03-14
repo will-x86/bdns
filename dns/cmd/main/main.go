@@ -42,7 +42,7 @@ func main() {
 	seed := flag.Bool("seed", false, "seed with init.sql")
 	flag.Parse()
 	config := getConfig()
-	if err := db.InitDB("./app.db"); err != nil {
+	if err := db.InitDB("./app.db", "./migrations/"); err != nil {
 		log.Fatalf("Failed to initialize database: %v\n", err)
 	}
 	if *seed {

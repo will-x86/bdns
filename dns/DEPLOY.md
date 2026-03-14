@@ -13,13 +13,13 @@ This DNS needs to bypass any proxy, primarily as we identify users via SNI ( whi
 
 ### Certificates
 
-#### locally
+#### self-signed certs
 ( Just hit enter a bunch ! )
 ```bash
 openssl genrsa -out server.key 2048\
 openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650\
 ```
-#### production
+#### certbot certs
 ```bash
 sudo apt install snapd
 sudo snap install certbot --classic
@@ -96,10 +96,10 @@ NEXT STEPS:
 ```
 
 
-# Expiring!!!
-- This cert will *not* be auto-renewed, and certbot no longer sends emails about expiring certificates
 </details>
 
+# Expiring!!!
+- This cert will *not* be auto-renewed, and certbot no longer sends emails about expiring certificates
 
 Now we have our cert, lets deploy it :)
 
@@ -116,8 +116,12 @@ As I said before, I'll be using Coolify so the steps for you may be different.
 
 5. Enviroment:
 ```
-KEY_PATH=/cert/dns.domain.com/privkey.pem
+KEY_PATH=/etc/letsencrypt/live/dns.domain.com/privkey.pem
 VALKEY_ADDR=valkey:6379
-CRT_PATH=/cert/dns.domain.com/fullchain.pem
+CRT_PATH=/etc/letsencrypt/live/dns.domain.com/fullchain.pem
 PORT=853
 ```
+6. Profit .. ? 
+
+
+Jk, uh just deploy :) 
