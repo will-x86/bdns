@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"os"
@@ -173,20 +174,24 @@ func printCertFilesAndPanic(dir string, err error) {
 	directory := strings.Split(dir, "/")
 	// Assume /dir/dir/example.{pem/crt}
 	if len(directory) > 0 {
-		entires, dirErr := os.ReadDir(strings.Join(directory[0:len(directory)-2], ""))
+		entires, dirErr := os.ReadDir(strings.Join(directory[0:len(directory)-1], ""))
 		if dirErr != nil {
 			log.Fatal(err)
 		}
 		for _, v := range entires {
 			log.Printf("Entry in cert dir: %s", v.Name())
 		}
+	} else {
+		log.Printf("Directory: %v", directory)
 	}
 	log.Fatal(err)
 }
 func RunServer(ctx context.Context, c *ServerConfig) {
+
 	cert, err := tls.LoadX509KeyPair(c.SignedKey, c.PrivateKey)
 	if err != nil {
-		if errors.Is(os.ErrNotExist, err) {
+		var pathErr *fs.PathError
+		if errors.As(err, &pathErr) {
 			printCertFilesAndPanic(c.SignedKey, err)
 		}
 		log.Fatal(err)
