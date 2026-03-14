@@ -55,7 +55,7 @@ func (r *TimeBlockRule) Evaluate(ctx context.Context, rctx *rule.RuleContext) (r
 	// We want the current interval the user is in
 	// This is hour[0,23] times four, plus minutes[0,59]/15 ( 4 per hour)
 	// 04:28 -> 16 +1
-	now := time.Now().In(location)
+	now := rctx.Now.In(location)
 	intervalIn := now.Hour()*4 + now.Minute()/15
 	// 0 = 00:00-00:15
 	// 20 = 05:00-05:15

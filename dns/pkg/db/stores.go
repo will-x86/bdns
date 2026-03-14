@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"time"
 
@@ -111,8 +110,7 @@ func (s *SQLiteStores) ResolveCategory(ctx context.Context, domain string) (stri
 func (s *SQLiteStores) GetTimeBlocks(ctx context.Context, profileID, category string) ([]models.TimeBlock, error) {
 	log.Printf("Grabbing timeblocks for profile ID %s with category %s", profileID, category)
 	var timeblocks []models.TimeBlock
-	err := db.Select(&timeblocks, "SELECT * FROM user_time_blocks WHERE profile_id=? AND category=?", profileID, category)
-	fmt.Printf("%T", err)
+	err := s.db.SelectContext(ctx, &timeblocks, "SELECT * FROM user_time_blocks WHERE profile_id=? AND category=?", profileID, category)
 	if err != nil {
 		return []models.TimeBlock{}, err
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	dns "codeberg.org/miekg/dns"
+	"github.com/will-x86/bdns/dns/pkg/db/models"
 	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
@@ -27,6 +28,13 @@ type fakeProfileStore struct {
 
 func (f fakeProfileStore) ProfileExists(_ context.Context, _ string) (bool, error) {
 	return f.exists, f.err
+}
+
+func (f fakeProfileStore) GetProfileWithUser(_ context.Context, id string) (*models.Profile, *models.User, error) {
+	if !f.exists {
+		return nil, nil, f.err
+	}
+	return &models.Profile{ID: id}, &models.User{ID: "u1", Timezone: "UTC"}, f.err
 }
 
 func profileStores(exists bool) rule.Stores {
