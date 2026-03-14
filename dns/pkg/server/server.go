@@ -138,11 +138,14 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 				parts := strings.SplitN(fullSNI, ".", 2)
 				profileID = parts[0]
 			}
+			if profileID == "" {
+				log.Printf("No SNI/profileID from %s — refusing\n", c.RemoteAddr())
+				return
+			}
 
 			log.Printf("Client SNI(profileID): %s\n", profileID)
 
-			// TCP DNS: 2-byte big-endian length prefix per RFC 1035 4.2.2
-			var msgLen uint16
+			/*var msgLen uint16
 			if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
 				log.Printf("Error reading TCP length prefix: %+v\n", err)
 				return
@@ -151,7 +154,7 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 			if _, err := io.ReadFull(c, buf); err != nil {
 				log.Printf("Error reading TCP DNS message: %+v\n", err)
 				return
-			}
+			}*/
 
 			h := &handler{
 				upstream: upstream,
@@ -169,7 +172,25 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 				stores:    ruleStores,
 				profileID: profileID,
 			}
-			h.handle(ctx, buf, c.RemoteAddr().String())
+			//h.handle(ctx, buf, c.RemoteAddr().String())
+			for {
+				// TCP DNS: 2-byte big-endian length prefix per RFC 1035 4.2.2
+				var msgLen uint16
+				if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
+					if err != io.EOF {
+						log.Printf("Error reading length prefix: %v\n", err)
+					}
+					return
+				}
+
+				buf := make([]byte, msgLen)
+				if _, err := io.ReadFull(c, buf); err != nil {
+					log.Printf("Error reading DNS message: %v\n", err)
+					return
+				}
+
+				h.handle(ctx, buf, c.RemoteAddr().String())
+			}
 		}(conn)
 	}
 }

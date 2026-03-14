@@ -45,7 +45,8 @@
             librsvg
             webkitgtk_4_1
             ## tauri end
-            knot-dns
+            knot-dns # kdig
+            dnsperf # per testing
             air
             goose
             sqlite

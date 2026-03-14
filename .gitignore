@@ -6,3 +6,4 @@ data
 *.key
 *.db
 *.env
+sample-query-data

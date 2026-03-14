@@ -27,6 +27,7 @@ The idea is, you invite a friend, and you both have say ~6k queries for X catego
 
 
 ### Rules engine flow: ( Some not implemented)
+- All rules are per profile unless specified otherwise
 - Is this domain permanently whitelisted -> per profile # Primarily for "I *need* this domain"
 - Is this domain temporarily whitelisted -> end of day whitelist 
 - Is this category fully blocked for this profile ? # Primarily for ADS/Porn/Gambling

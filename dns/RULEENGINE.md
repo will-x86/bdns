@@ -6,6 +6,7 @@
 Idea behind this is to pencil out the rule engine for helping me code lol
 
 ## Blocking rules 
+- All rules are per profile unless specified otherwise
 - [x] - Is this domain permanently whitelisted -> per profile # Primarily for "oops need this domain"
 ^^ SQLite 
 - [x] - Is this domain temporarily whitelisted -> end of day whitelist 
