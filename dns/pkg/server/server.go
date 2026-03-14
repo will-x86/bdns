@@ -170,13 +170,13 @@ type ServerConfig struct {
 }
 
 // Print all files in cert dir & panic, to hopefully be useful to user
-func printCertFilesAndPanic(dir string, err error) {
+func tlsNiceExitNoCert(dir string, err error) {
 	directory := strings.Split(dir, "/")
 	// Assume /dir/dir/example.{pem/crt}
 	if len(directory) > 0 {
 		entires, dirErr := os.ReadDir(strings.Join(directory[0:len(directory)-1], ""))
 		if dirErr != nil {
-			log.Fatal(err)
+			log.Fatalf("error reading tls cert: %+v", err)
 		}
 		for _, v := range entires {
 			log.Printf("Entry in cert dir: %s", v.Name())
@@ -184,7 +184,7 @@ func printCertFilesAndPanic(dir string, err error) {
 	} else {
 		log.Printf("Directory: %v", directory)
 	}
-	log.Fatal(err)
+	log.Fatalf("tls cert directory error, path cannot be parsed either %v", err) // Exit
 }
 func RunServer(ctx context.Context, c *ServerConfig) {
 
@@ -192,15 +192,15 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 	if err != nil {
 		var pathErr *fs.PathError
 		if errors.As(err, &pathErr) {
-			printCertFilesAndPanic(c.SignedKey, err)
+			tlsNiceExitNoCert(c.SignedKey, err)
 		}
-		log.Fatal(err)
+		log.Fatalf("cannot load certificate %v", err)
 	}
 	listener, err := tls.Listen("tcp", fmt.Sprintf(":%d", c.Port), &tls.Config{
 		Certificates: []tls.Certificate{cert},
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to listen on port %d, with error: %v", c.Port, err)
 	}
 	defer listener.Close()
 
@@ -230,7 +230,7 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Println("Error:", err)
+			log.Println("Error on accepting listender for a connection :", err)
 			continue
 		}
 		go func(c net.Conn) {
@@ -252,12 +252,12 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 			// TCP DNS: 2-byte big-endian length prefix per RFC 1035 4.2.2
 			var msgLen uint16
 			if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
-				log.Printf("Error reading TCP length prefix: %v\n", err)
+				log.Printf("Error reading TCP length prefix: %+v\n", err)
 				return
 			}
 			buf := make([]byte, msgLen)
 			if _, err := io.ReadFull(c, buf); err != nil {
-				log.Printf("Error reading TCP DNS message: %v\n", err)
+				log.Printf("Error reading TCP DNS message: %+v\n", err)
 				return
 			}
 
@@ -268,7 +268,10 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 					prefix := make([]byte, 2)
 					binary.BigEndian.PutUint16(prefix, uint16(len(response)))
 					_, err := c.Write(append(prefix, response...))
-					return err
+					if err != nil {
+						return fmt.Errorf("error writing to response: %w", err)
+					}
+					return nil
 				},
 				engine: engine,
 				stores: ruleStores,

@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"log"
 	"os"
 
 	"github.com/jmoiron/sqlx"
@@ -13,11 +14,11 @@ var db *sqlx.DB
 
 func runMigrations(db *sql.DB, migrationsPath string) {
 	if err := goose.SetDialect("sqlite"); err != nil {
-		panic(err)
+		log.Fatalf("error setting database dialiect to sqlite : %v", err)
 	}
 
 	if err := goose.Up(db, migrationsPath); err != nil {
-		panic(err)
+		log.Fatalf("error migrating database : %v", err)
 	}
 
 }
@@ -41,21 +42,16 @@ func Seed() {
 
 	c, e := os.ReadFile(path)
 	if e != nil {
-		panic(e)
+		log.Fatalf("error reading seed file, path: %s, err - %v", path, e)
 	}
 	sql := string(c)
 	_, err := db.Exec(sql)
 	if err != nil {
-		panic(err)
+		log.Fatalf("error executing seed file, path: %s, err - %v", path, err)
 	}
 }
 func GetDB() *sqlx.DB {
 	return db
-}
-
-type User struct {
-	ID        string `db:"id"`
-	CreatedAt int64  `db:"created_at"`
 }
 
 func CreateUser() (string, error) {
