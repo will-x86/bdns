@@ -28,11 +28,11 @@ services:
     ports:
       - ${PORT:-853}:${PORT:-853}
     volumes:
-      - ${CERT_DIR}:/cert
+      - /etc/letsencrypt/live/:/cert # change if not using letsencrypt
     environment:
-      KEY_PATH: ${KEY_PATH}
+      KEY_PATH: ${KEY_PATH} # domain.com/privkey.pem
       VALKEY_ADDR: ${VALKEY_ADDR:-valkey:6379}
-      CRT_PATH: ${CRT_PATH}
+      CRT_PATH: ${CRT_PATH} # domain.com/fullchain.pem
       PORT: ${PORT:-853}
 
     depends_on:
