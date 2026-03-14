@@ -30,9 +30,9 @@ func getConfig() server.ServerConfig {
 	c.Port = func() int {
 		port, err := strconv.Atoi(os.Getenv("PORT"))
 		if err != nil {
-			return port
+			return 8533
 		}
-		return 8533
+		return port
 
 	}()
 	return c

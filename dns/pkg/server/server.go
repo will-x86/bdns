@@ -171,6 +171,9 @@ type ServerConfig struct {
 
 // Print all files in cert dir & panic, to hopefully be useful to user
 func tlsNiceExitNoCert(dir string, err error) {
+	if dir == "" {
+		log.Fatal("cert dir is \"\", cannot read tls certificate")
+	}
 	directory := strings.Split(dir, "/")
 	// Assume /dir/dir/example.{pem/crt}
 	if len(directory) > 0 {

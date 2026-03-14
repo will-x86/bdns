@@ -28,11 +28,12 @@ services:
     ports:
       - ${PORT:-853}:${PORT:-853}
     volumes:
-      - /etc/letsencrypt/live/:/cert # change if not using letsencrypt
+      - /etc/letsencrypt/:/etc/letsencrypt/:ro # change if not using letsencrypt
+      # letsencrypt uses a symlink, if you add /live to the volume, it will fail
     environment:
-      KEY_PATH: ${KEY_PATH} # dns.domain.com/privkey.pem
+      KEY_PATH: ${KEY_PATH:-/etc/letsencrypt/live/example.com/privkey.pem}
+      CRT_PATH: ${CRT_PATH:-/etc/letsencrypt/live/example.com/fullchain.pem}
       VALKEY_ADDR: ${VALKEY_ADDR:-valkey:6379}
-      CRT_PATH: ${CRT_PATH} # dns.domain.com/fullchain.pem
       PORT: ${PORT:-853}
 
     depends_on:
