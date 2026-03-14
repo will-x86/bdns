@@ -1,18 +1,18 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE permanent_whitelists (
-    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     domain     TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    PRIMARY KEY (user_id, domain)
+    PRIMARY KEY (profile_id, domain)
 );
 
 CREATE TABLE temporary_whitelists (
-    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     domain     TEXT NOT NULL,
     expires_at INTEGER NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    PRIMARY KEY (user_id, domain)
+    PRIMARY KEY (profile_id, domain)
 );
 -- +goose StatementEnd
 
