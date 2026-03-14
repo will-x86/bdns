@@ -1,4 +1,3 @@
-// Proxies to cloudflare, should later on retry if fail
 package proxy
 
 import (
@@ -6,82 +5,114 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"net"
-	"slices"
+	"sync"
 )
 
-type Client struct {
-	serverAddress string
-	port          int
-	serverName    string // SNI for TLS - will be used later for identifying users
+const poolSize = 8
+
+type conn struct {
+	c *tls.Conn
 }
 
-func NewTLSClient(address string, port int, serverName string) *Client {
-	return &Client{serverAddress: address, port: port, serverName: serverName}
+type pool struct {
+	mu    sync.Mutex
+	conns []*conn
+	cfg   *tls.Config
+	addr  string
 }
 
-func (c *Client) isIPV4() (bool, error) {
-	ip := net.ParseIP(c.serverAddress)
-	if ip.To4() != nil {
-		return true, nil
-	} else if ip.To16() != nil {
-		return false, nil
+func newPool(addr string, cfg *tls.Config) *pool {
+	return &pool{addr: addr, cfg: cfg}
+}
+
+func (p *pool) get() (*conn, error) {
+	p.mu.Lock()
+	if n := len(p.conns); n > 0 {
+		c := p.conns[n-1]
+		p.conns = p.conns[:n-1]
+		p.mu.Unlock()
+		return c, nil
 	}
-	return false, fmt.Errorf("invalid IP address: %s", c.serverAddress)
+	p.mu.Unlock()
+	return p.dial()
 }
 
-func (c *Client) addr() (string, error) {
-	isIPV4, err := c.isIPV4()
-	if err != nil {
-		return "", err
+func (p *pool) put(c *conn) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.conns) >= poolSize {
+		c.c.Close()
+		return
 	}
-	if isIPV4 {
-		return fmt.Sprintf("%s:%d", c.serverAddress, c.port), nil
-	}
-	return fmt.Sprintf("[%s]:%d", c.serverAddress, c.port), nil
+	p.conns = append(p.conns, c)
 }
 
-func (c *Client) SendQuery(query []byte) ([]byte, error) {
-	addr, err := c.addr()
-	if err != nil {
-		log.Printf("Error determining address: %v\n", err)
-		return nil, err
-	}
-
-	return c.sendQueryTLS(addr, query)
+func (p *pool) discard(c *conn) {
+	c.c.Close()
 }
 
-func (c *Client) sendQueryTLS(addr string, query []byte) ([]byte, error) {
-	conn, err := tls.Dial("tcp", addr, &tls.Config{
-		ServerName: c.serverName,
-	})
+func (p *pool) dial() (*conn, error) {
+	c, err := tls.Dial("tcp", p.addr, p.cfg)
 	if err != nil {
 		return nil, fmt.Errorf("dial tls: %w", err)
 	}
-	defer conn.Close()
+	return &conn{c: c}, nil
+}
 
+type Client struct {
+	pool *pool
+}
+
+func NewTLSClient(address string, port int, serverName string) *Client {
+	ip := net.ParseIP(address)
+	var addr string
+	if ip != nil && ip.To4() == nil && ip.To16() != nil {
+		addr = fmt.Sprintf("[%s]:%d", address, port)
+	} else {
+		addr = fmt.Sprintf("%s:%d", address, port)
+	}
+	cfg := &tls.Config{ServerName: serverName}
+	return &Client{pool: newPool(addr, cfg)}
+}
+
+func (c *Client) SendQuery(query []byte) ([]byte, error) {
+	for range 2 {
+		cn, err := c.pool.get()
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := sendOn(cn.c, query)
+		if err != nil {
+			c.pool.discard(cn)
+			continue
+		}
+
+		c.pool.put(cn)
+		return resp, nil
+	}
+	return nil, fmt.Errorf("upstream query failed after retry")
+}
+
+func sendOn(c *tls.Conn, query []byte) ([]byte, error) {
 	prefix := make([]byte, 2)
 	binary.BigEndian.PutUint16(prefix, uint16(len(query)))
-	if _, err = conn.Write(append(prefix, query...)); err != nil {
-		return nil, fmt.Errorf("write tls: %w", err)
+	if _, err := c.Write(append(prefix, query...)); err != nil {
+		return nil, fmt.Errorf("write: %w", err)
 	}
 
 	var respLen uint16
-	if err := binary.Read(conn, binary.BigEndian, &respLen); err != nil {
-		return nil, fmt.Errorf("read tls length prefix: %w", err)
+	if err := binary.Read(c, binary.BigEndian, &respLen); err != nil {
+		return nil, fmt.Errorf("read length: %w", err)
 	}
-	response := make([]byte, respLen)
-	if _, err := io.ReadFull(conn, response); err != nil {
-		return nil, fmt.Errorf("read tls response: %w", err)
+	resp := make([]byte, respLen)
+	if _, err := io.ReadFull(c, resp); err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
 	}
 
-	if !hasTheSameID(query, response) {
+	if len(resp) < 2 || resp[0] != query[0] || resp[1] != query[1] {
 		return nil, fmt.Errorf("response ID mismatch")
 	}
-	return response, nil
-}
-
-func hasTheSameID(query, response []byte) bool {
-	return slices.Equal(query[:2], response[:2])
+	return resp, nil
 }

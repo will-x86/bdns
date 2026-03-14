@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/will-x86/bdns/dns/pkg/db"
 	"github.com/will-x86/bdns/dns/pkg/proxy"
@@ -145,23 +146,15 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 
 			log.Printf("Client SNI(profileID): %s\n", profileID)
 
-			/*var msgLen uint16
-			if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
-				log.Printf("Error reading TCP length prefix: %+v\n", err)
-				return
-			}
-			buf := make([]byte, msgLen)
-			if _, err := io.ReadFull(c, buf); err != nil {
-				log.Printf("Error reading TCP DNS message: %+v\n", err)
-				return
-			}*/
-
+			var mu sync.Mutex
 			h := &handler{
 				upstream: upstream,
 				cache:    cache,
 				write: func(response []byte) error {
 					prefix := make([]byte, 2)
 					binary.BigEndian.PutUint16(prefix, uint16(len(response)))
+					mu.Lock()
+					defer mu.Unlock()
 					_, err := c.Write(append(prefix, response...))
 					if err != nil {
 						return fmt.Errorf("error writing to response: %w", err)
@@ -172,9 +165,8 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 				stores:    ruleStores,
 				profileID: profileID,
 			}
-			//h.handle(ctx, buf, c.RemoteAddr().String())
+
 			for {
-				// TCP DNS: 2-byte big-endian length prefix per RFC 1035 4.2.2
 				var msgLen uint16
 				if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
 					if err != io.EOF {
@@ -189,7 +181,7 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 					return
 				}
 
-				h.handle(ctx, buf, c.RemoteAddr().String())
+				go h.handle(ctx, buf, c.RemoteAddr().String())
 			}
 		}(conn)
 	}
