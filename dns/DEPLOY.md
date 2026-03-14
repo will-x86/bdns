@@ -112,5 +112,13 @@ As I said before, I'll be using Coolify so the steps for you may be different.
 4. Options:
     - Build pack = Docker compose
     - Base directory = /dns
-    - Docker compose location = /prod-docker-compose.yml
+    - Docker compose location = /prod-docker-compose.yml # Notice the .yml, coolify defaults to .yaml
 
+5. Enviroment:
+```
+KEY_PATH=/cert/privkey.pem
+VALKEY_ADDR=valkey:6379
+CRT_PATH=/cert/fullchain.pem
+PORT=853
+CERT_DIR=/etc/letsencrypt/live/domain.com/
+```

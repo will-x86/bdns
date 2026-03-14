@@ -3,7 +3,7 @@ services:
     container_name: valkey
     image: valkey/valkey:9.0.3
     ports:
-      - 6379:6379 # HOST_PORT:CONTAINER_PORT
+      - 6379:6379
     volumes:
       - ./valkey/data:/data
       - ./valkey/conf/valkey.conf:/usr/local/etc/valkey/valkey.conf
@@ -28,14 +28,17 @@ services:
     ports:
       - ${PORT:-853}:${PORT:-853}
     volumes:
-      - ${CERT_DIR:-/cert}:/cert #CERT_DIR must be the dir from *outside* the container
+      - ${CERT_DIR:?CERT_DIR must be set to the host directory containing your certs}:/cert
     environment:
-      KEY_PATH: ${KEY_PATH} # KEY_PATH must be /cert/{FILE_NAME}
-      VALKEY_ADDR: ${VALKEY_ADDR}
-      CRT_PATH: ${CRT_PATH} # CRT_PATH must be /cert/{FILE_NAME}
-      PORT: ${PORT}
+      KEY_PATH: ${KEY_PATH:?KEY_PATH must be set, e.g. /cert/server.key}
+      VALKEY_ADDR: ${VALKEY_ADDR:-valkey:6379}
+      CRT_PATH: ${CRT_PATH:?CRT_PATH must be set, e.g. /cert/server.crt}
+      PORT: ${PORT:-853}
     depends_on:
       - valkey
+    networks:
+      - valkey_network
+
 networks:
   valkey_network:
     driver: bridge
