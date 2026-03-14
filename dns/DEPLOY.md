@@ -116,9 +116,8 @@ As I said before, I'll be using Coolify so the steps for you may be different.
 
 5. Enviroment:
 ```
-KEY_PATH=/cert/privkey.pem
+KEY_PATH=/cert/dns.domain.com/privkey.pem
 VALKEY_ADDR=valkey:6379
-CRT_PATH=/cert/fullchain.pem
+CRT_PATH=/cert/dns.domain.com/fullchain.pem
 PORT=853
-CERT_DIR=/etc/letsencrypt/live/domain.com/
 ```

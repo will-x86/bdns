@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -166,9 +168,27 @@ type ServerConfig struct {
 	ValkeyAddr string
 }
 
+// Print all files in cert dir & panic, to hopefully be useful to user
+func printCertFilesAndPanic(dir string, err error) {
+	directory := strings.Split(dir, "/")
+	// Assume /dir/dir/example.{pem/crt}
+	if len(directory) > 0 {
+		entires, dirErr := os.ReadDir(strings.Join(directory[0:len(directory)-2], ""))
+		if dirErr != nil {
+			log.Fatal(err)
+		}
+		for _, v := range entires {
+			log.Printf("Entry in cert dir: %s", v.Name())
+		}
+	}
+	log.Fatal(err)
+}
 func RunServer(ctx context.Context, c *ServerConfig) {
 	cert, err := tls.LoadX509KeyPair(c.SignedKey, c.PrivateKey)
 	if err != nil {
+		if errors.Is(os.ErrNotExist, err) {
+			printCertFilesAndPanic(c.SignedKey, err)
+		}
 		log.Fatal(err)
 	}
 	listener, err := tls.Listen("tcp", fmt.Sprintf(":%d", c.Port), &tls.Config{
