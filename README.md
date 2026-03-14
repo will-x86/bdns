@@ -1,5 +1,4 @@
-## AI Disclosure
-
+### AI Disclosure
 
 Tests will be written by AI/me, anything else will be written by me.
 
@@ -10,15 +9,14 @@ I'm not very familiar with "proper" tests in Go
 
 The idea here is a social based DNS, where friends share credits / queries.
 
-The goal is not to be a full blown DNS, but rather a beautiful proxy to learn some technologies.
+The goal is not to be a full blown DNS, but rather a proxy that adds some features
 
 
-Components: ( tood most LMFAO ) 
-
+Components: 
 - dns - Core DNS using go, goal is to do the following:
     - Parse query ( extract user_id via via sni in DoT/ or subdomain in DoH )
     - Do a simple check if user has the ability to check said side ( credits / full block / whatever)
-    - Provide smoochy api for the app
+    - Some user interface..?
 
 
 
@@ -28,8 +26,8 @@ Components: ( tood most LMFAO )
 The idea is, you invite a friend, and you both have say ~6k queries for X category per day. Primarily social media based focus.
 
 
-### Rules engine flow:
-- Is this domain permanently whitelisted -> per profile # Primarily for "oops need this domain"
+### Rules engine flow: ( Some not implemented)
+- Is this domain permanently whitelisted -> per profile # Primarily for "I *need* this domain"
 - Is this domain temporarily whitelisted -> end of day whitelist 
 - Is this category fully blocked for this profile ? # Primarily for ADS/Porn/Gambling
 - Does this user have hard time blocks for this category ( No social media after 10 regardless ) 
@@ -50,11 +48,28 @@ The idea is, you invite a friend, and you both have say ~6k queries for X catego
 
 
 
-#### Testing SNI stuff
+### Test locally 
+```bash
+openssl genrsa -out server.key 2048\
+openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650\
+```
+add to .env:
+```
+PORT=8533
+KEY_PATH=./server.key
+CRT_PATH=./server.crt
+GOOSE_MIGRATION_DIR=./migrations/
+```
 
 ```bash
- kdig @127.0.0.1 -p 8533 +tls-sni=bobby google.com # Should print bobby
+go run ./... -ingest
+go run ./... -seed
+kdig @127.0.0.1 -p 8533 +tls-sni=bobby google.com # refused
+kdig @127.0.0.1 -p 8533 +tls-sni=aabbccdd.dns.example.com google.com # accepted
 ```
+-ingest downloads all blocklists then exists
+-seed runs after executing the content in seed.sql ( create init user)
+
 
 
 # Roadmap 

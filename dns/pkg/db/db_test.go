@@ -15,32 +15,36 @@ func initTestDB(t *testing.T) *SQLiteStores {
 	return NewStores(GetDB())
 }
 
-func TestUserExists_NotFound(t *testing.T) {
+func TestProfileExists_NotFound(t *testing.T) {
 	s := initTestDB(t)
 
-	exists, err := s.UserExists(context.Background(), "doesnotexist")
+	exists, err := s.ProfileExists(context.Background(), "doesnotexist")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if exists {
-		t.Error("expected false for unknown user, got true")
+		t.Error("expected false for unknown profile, got true")
 	}
 }
 
-func TestUserExists_Found(t *testing.T) {
+func TestProfileExists_Found(t *testing.T) {
 	s := initTestDB(t)
 
-	id, err := CreateUser("Europe/London")
+	userID, err := CreateUser("Europe/London")
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
+	profileID, err := CreateProfile(userID, "test-laptop")
+	if err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
 
-	exists, err := s.UserExists(context.Background(), id)
+	exists, err := s.ProfileExists(context.Background(), profileID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !exists {
-		t.Errorf("expected true for user %q, got false", id)
+		t.Errorf("expected true for profile %q, got false", profileID)
 	}
 }
 

@@ -1,10 +1,10 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE user_category_blocks (
-    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     category   TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    PRIMARY KEY (user_id, category)
+    PRIMARY KEY (profile_id, category)
 );
 -- +goose StatementEnd
 

@@ -62,3 +62,12 @@ func CreateUser(timezone string) (string, error) {
 	).Scan(&id)
 	return id, err
 }
+
+func CreateProfile(userID, name string) (string, error) {
+	var id string
+	err := db.QueryRow(
+		`INSERT INTO profiles (user_id, name) VALUES (?, ?) RETURNING id`,
+		userID, name,
+	).Scan(&id)
+	return id, err
+}

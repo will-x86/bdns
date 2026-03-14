@@ -22,7 +22,7 @@ func (r *CategoryBlockRule) Evaluate(ctx context.Context, rctx *rule.RuleContext
 		return rule.PassThrough(), nil
 	}
 
-	blocked, err := rctx.Stores.Category.IsCategoryBlocked(ctx, rctx.UserID, category)
+	blocked, err := rctx.Stores.Category.IsCategoryBlocked(ctx, rctx.ProfileID, category)
 	if err != nil {
 		return rule.Decision{}, err
 	}

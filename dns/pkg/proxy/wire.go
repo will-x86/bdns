@@ -11,5 +11,6 @@ func BuildEngine(stores rule.Stores) *rule.Engine {
 		&rules.PermanentWhitelistRule{},
 		&rules.TemporaryWhitelistRule{},
 		&rules.CategoryBlockRule{},
+		&rules.TimeBlockRule{},
 	)
 }

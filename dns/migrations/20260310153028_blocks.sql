@@ -11,7 +11,7 @@ CREATE TABLE blocklist_sources (
 CREATE TABLE blocklist_entries (
     domain     TEXT NOT NULL,
     source_id  TEXT NOT NULL REFERENCES blocklist_sources(id) ON DELETE CASCADE,
-    category   TEXT NOT NULL,
+    category TEXT NOT NULL, -- *not* subcategory
     PRIMARY KEY (domain, source_id)
 );
 CREATE INDEX idx_blocklist_domain ON blocklist_entries(domain);

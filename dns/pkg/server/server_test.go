@@ -20,17 +20,17 @@ func (f *fakeUpstream) SendQuery(_ []byte) ([]byte, error) {
 	return f.response, f.err
 }
 
-type fakeUserStore struct {
+type fakeProfileStore struct {
 	exists bool
 	err    error
 }
 
-func (f fakeUserStore) UserExists(_ context.Context, _ string) (bool, error) {
+func (f fakeProfileStore) ProfileExists(_ context.Context, _ string) (bool, error) {
 	return f.exists, f.err
 }
 
-func userStores(exists bool) rule.Stores {
-	return rule.Stores{User: fakeUserStore{exists: exists}}
+func profileStores(exists bool) rule.Stores {
+	return rule.Stores{Profile: fakeProfileStore{exists: exists}}
 }
 
 func passthroughEngine() *rule.Engine {
@@ -100,11 +100,11 @@ func TestHandle_HappyPath(t *testing.T) {
 
 	var written []byte
 	h := &handler{
-		upstream: &fakeUpstream{response: response},
-		write:    func(b []byte) error { written = b; return nil },
-		engine:   passthroughEngine(),
-		stores:   userStores(true),
-		userID:   "testuser",
+		upstream:  &fakeUpstream{response: response},
+		write:     func(b []byte) error { written = b; return nil },
+		engine:    passthroughEngine(),
+		stores:    profileStores(true),
+		profileID: "testprofile",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
@@ -119,11 +119,11 @@ func TestHandle_UpstreamError_NoWrite(t *testing.T) {
 
 	writeCount := 0
 	h := &handler{
-		upstream: up,
-		write:    func(b []byte) error { writeCount++; return nil },
-		engine:   passthroughEngine(),
-		stores:   userStores(true),
-		userID:   "testuser",
+		upstream:  up,
+		write:     func(b []byte) error { writeCount++; return nil },
+		engine:    passthroughEngine(),
+		stores:    profileStores(true),
+		profileID: "testprofile",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
@@ -156,11 +156,11 @@ func TestHandle_WriteError_NoPanic(t *testing.T) {
 	response := buildResponse(t, query)
 
 	h := &handler{
-		upstream: &fakeUpstream{response: response},
-		write:    func(b []byte) error { return errors.New("client disconnected") },
-		engine:   passthroughEngine(),
-		stores:   userStores(true),
-		userID:   "testuser",
+		upstream:  &fakeUpstream{response: response},
+		write:     func(b []byte) error { return errors.New("client disconnected") },
+		engine:    passthroughEngine(),
+		stores:    profileStores(true),
+		profileID: "testprofile",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 	// pass if no panic
@@ -184,11 +184,11 @@ func TestHandle_QueryTypes(t *testing.T) {
 
 			var written []byte
 			h := &handler{
-				upstream: &fakeUpstream{response: response},
-				write:    func(b []byte) error { written = b; return nil },
-				engine:   passthroughEngine(),
-				stores:   userStores(true),
-				userID:   "testuser",
+				upstream:  &fakeUpstream{response: response},
+				write:     func(b []byte) error { written = b; return nil },
+				engine:    passthroughEngine(),
+				stores:    profileStores(true),
+				profileID: "testprofile",
 			}
 			h.handle(context.Background(), query, "127.0.0.1:1234")
 
@@ -210,11 +210,11 @@ func TestHandle_ResponseTxIDMatchesQuery(t *testing.T) {
 
 	var written []byte
 	h := &handler{
-		upstream: &fakeUpstream{response: responseWithWrongID},
-		write:    func(b []byte) error { written = b; return nil },
-		engine:   passthroughEngine(),
-		stores:   userStores(true),
-		userID:   "testuser",
+		upstream:  &fakeUpstream{response: responseWithWrongID},
+		write:     func(b []byte) error { written = b; return nil },
+		engine:    passthroughEngine(),
+		stores:    profileStores(true),
+		profileID: "testprofile",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
@@ -229,11 +229,11 @@ func TestHandle_UnknownUser_Refused(t *testing.T) {
 	up := &countingUpstream{}
 	var written []byte
 	h := &handler{
-		upstream: up,
-		write:    func(b []byte) error { written = b; return nil },
-		engine:   passthroughEngine(),
-		stores:   userStores(false),
-		userID:   "unknownuser",
+		upstream:  up,
+		write:     func(b []byte) error { written = b; return nil },
+		engine:    passthroughEngine(),
+		stores:    profileStores(false),
+		profileID: "unknownprofile",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
@@ -254,11 +254,11 @@ func TestHandle_NilUserStore_Refused(t *testing.T) {
 	up := &countingUpstream{}
 	var written []byte
 	h := &handler{
-		upstream: up,
-		write:    func(b []byte) error { written = b; return nil },
-		engine:   passthroughEngine(),
-		stores:   rule.Stores{},
-		userID:   "someuser",
+		upstream:  up,
+		write:     func(b []byte) error { written = b; return nil },
+		engine:    passthroughEngine(),
+		stores:    rule.Stores{},
+		profileID: "someprofile",
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 
@@ -279,10 +279,10 @@ func TestHandle_NoSNI_Refused(t *testing.T) {
 	up := &countingUpstream{}
 	var written []byte
 	h := &handler{
-		upstream: up,
-		write:    func(b []byte) error { written = b; return nil },
-		engine:   passthroughEngine(),
-		userID:   "", // no SNI
+		upstream:  up,
+		write:     func(b []byte) error { written = b; return nil },
+		engine:    passthroughEngine(),
+		profileID: "", // no SNI
 	}
 	h.handle(context.Background(), query, "127.0.0.1:1234")
 

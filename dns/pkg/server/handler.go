@@ -11,12 +11,12 @@ import (
 )
 
 type handler struct {
-	upstream DNSUpstream
-	cache    *rcache.Cache
-	write    func([]byte) error
-	engine   *rule.Engine
-	stores   rule.Stores
-	userID   string
+	upstream  DNSUpstream
+	cache     *rcache.Cache
+	write     func([]byte) error
+	engine    *rule.Engine
+	stores    rule.Stores
+	profileID string
 }
 
 func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr string) {
@@ -44,28 +44,28 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 	}
 
 	// Refuse non-authed users
-	if h.userID == "" {
-		log.Printf("No SNI from %s — refusing\n", remoteAddr)
+	if h.profileID == "" {
+		log.Printf("No SNI/profileID from %s — refusing\n", remoteAddr)
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
 			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
 		}
 		return
 	}
-	if h.stores.User == nil {
-		log.Printf("No user store configured, refusing %s\n", remoteAddr)
+	if h.stores.Profile == nil {
+		log.Printf("No profile store configured, refusing %s\n", remoteAddr)
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
 			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
 		}
 		return
 	}
-	if userExists, err := h.stores.User.UserExists(ctx, h.userID); err != nil {
-		log.Printf("DB error checking user %s: %v\n", h.userID, err)
+	if profileExists, err := h.stores.Profile.ProfileExists(ctx, h.profileID); err != nil {
+		log.Printf("DB error checking profile %s: %v\n", h.profileID, err)
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
 			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
 		}
 		return
-	} else if !userExists {
-		log.Printf("User %s not found in DB\n", h.userID)
+	} else if !profileExists {
+		log.Printf("Profile %s not found in DB\n", h.profileID)
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
 			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
 		}
@@ -73,16 +73,16 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 	}
 
 	decision, ruleErr := h.engine.Evaluate(ctx, &rule.RuleContext{
-		Domain: q.QName,
-		UserID: h.userID,
-		Now:    time.Now(),
-		Stores: h.stores,
+		Domain:    q.QName,
+		ProfileID: h.profileID,
+		Now:       time.Now(),
+		Stores:    h.stores,
 	})
 	if ruleErr != nil {
 		log.Printf("Rule engine error for %s %s: %v\n", q.QName, qtypeStr, ruleErr)
 		// Fail open
 	} else if decision.Verdict == rule.VerdictBlock {
-		log.Printf("Blocked %s %s for user %s: %s\n", q.QName, qtypeStr, h.userID, decision.Reason)
+		log.Printf("Blocked %s %s for profile %s: %s\n", q.QName, qtypeStr, h.profileID, decision.Reason)
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
 			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
 		}

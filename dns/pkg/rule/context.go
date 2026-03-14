@@ -3,25 +3,28 @@ package rule
 import (
 	"context"
 	"time"
+
+	"github.com/will-x86/bdns/dns/pkg/db/models"
 )
 
-type UserStore interface {
-	UserExists(ctx context.Context, userID string) (bool, error)
+type ProfileStore interface {
+	ProfileExists(ctx context.Context, profileID string) (bool, error)
 }
 
 type WhitelistStore interface {
-	IsPermanentlyWhitelisted(ctx context.Context, userID, domain string) (bool, error)
-	IsTemporarilyWhitelisted(ctx context.Context, userID, domain string, now time.Time) (bool, error)
+	IsPermanentlyWhitelisted(ctx context.Context, profileID, domain string) (bool, error)
+	IsTemporarilyWhitelisted(ctx context.Context, profileID, domain string, now time.Time) (bool, error)
 }
 
 type CategoryStore interface {
-	IsCategoryBlocked(ctx context.Context, userID, category string) (bool, error)
+	IsCategoryBlocked(ctx context.Context, profileID, category string) (bool, error)
+}
+
+type TimeBlockStore interface {
+	GetTimeBlocks(ctx context.Context, profileID, category string) ([]models.TimeBlock, error)
 }
 
 /*
-type TimeBlockStore interface {
-	GetTimeBlocks(ctx context.Context, userID, category string) ([]models.TimeBlock, error)
-}
 
 type FriendshipStore interface {
 	GetFriendship(ctx context.Context, userID string) (*models.Friendship, bool, error)
@@ -33,19 +36,19 @@ type FriendshipStore interface {
 type CategoryResolver func(ctx context.Context, domain string) (string, error)
 
 type Stores struct {
-	User      UserStore
+	Profile   ProfileStore
 	Whitelist WhitelistStore
 	Category  CategoryStore
-	//	TimeBlock  TimeBlockStore
+	TimeBlock TimeBlockStore
 	//	Friendship FriendshipStore
 	Resolve CategoryResolver
 }
 
 // per-request - fields are lazily populated.
 type RuleContext struct {
-	Domain string
-	UserID string
-	Now    time.Time
+	Domain    string
+	ProfileID string
+	Now       time.Time
 
 	// lazy — nil means not yet fetched
 	category *string

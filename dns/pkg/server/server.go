@@ -108,9 +108,10 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 
 	stores := db.NewStores(db.GetDB())
 	ruleStores := rule.Stores{
-		User:      stores,
+		Profile:   stores,
 		Whitelist: stores,
 		Category:  stores,
+		TimeBlock: stores,
 		Resolve:   stores.ResolveCategory,
 	}
 	engine := proxy.BuildEngine(ruleStores)
@@ -132,13 +133,13 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 				return
 			}
 			fullSNI := tlsConn.ConnectionState().ServerName
-			var userID string
+			var profileID string
 			if strings.Contains(fullSNI, ".") {
 				parts := strings.SplitN(fullSNI, ".", 2)
-				userID = parts[0]
+				profileID = parts[0]
 			}
 
-			log.Printf("Client SNI: %s\n", userID)
+			log.Printf("Client SNI(profileID): %s\n", profileID)
 
 			// TCP DNS: 2-byte big-endian length prefix per RFC 1035 4.2.2
 			var msgLen uint16
@@ -164,9 +165,9 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 					}
 					return nil
 				},
-				engine: engine,
-				stores: ruleStores,
-				userID: userID,
+				engine:    engine,
+				stores:    ruleStores,
+				profileID: profileID,
 			}
 			h.handle(ctx, buf, c.RemoteAddr().String())
 		}(conn)
