@@ -3,13 +3,15 @@ package db
 import (
 	"context"
 	"testing"
+
+	"github.com/rs/zerolog"
 )
 
 const migrationsDir = "../../migrations/"
 
 func initTestDB(t *testing.T) *SQLiteStores {
 	t.Helper()
-	if err := InitDB(":memory:", migrationsDir); err != nil {
+	if err := InitDB(zerolog.Nop(), ":memory:", migrationsDir); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	return NewStores(GetDB())

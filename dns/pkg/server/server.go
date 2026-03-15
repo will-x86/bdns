@@ -71,10 +71,10 @@ func tlsNiceExitNoCert(ctx context.Context, dir string, err error) {
 			log.Fatal().Err(err).Msg("error reading tls cert")
 		}
 		for _, v := range entires {
-			log.Info().Str("entry in cert dir", v.Name())
+			log.Info().Str("entry in cert dir", v.Name()).Send()
 		}
 	} else {
-		log.Debug().Any("directory", directory)
+		log.Debug().Any("directory", directory).Send()
 	}
 	log.Fatal().Err(err).Msg("tls cert direcotry error, path cannot be parsed either")
 }
@@ -129,6 +129,7 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 		}
 		go func(c net.Conn) {
 			log := log.With().Str("remote", c.RemoteAddr().String()).Logger()
+			connCtx := log.WithContext(ctx)
 			defer c.Close()
 			tlsConn := c.(*tls.Conn)
 			if err := tlsConn.Handshake(); err != nil {
@@ -146,7 +147,7 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 				return
 			}
 
-			log.Debug().Str("sni", fullSNI).Str("profileID", profileID)
+			log.Debug().Str("sni", fullSNI).Str("profileID", profileID).Send()
 
 			var mu sync.Mutex
 			h := &handler{
@@ -172,18 +173,18 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 				var msgLen uint16
 				if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
 					if err != io.EOF {
-						log.Printf("Error reading length prefix: %v\n", err)
+						log.Warn().Err(err).Msg("Error reading length prefix")
 					}
 					return
 				}
 
 				buf := make([]byte, msgLen)
 				if _, err := io.ReadFull(c, buf); err != nil {
-					log.Printf("Error reading DNS message: %v\n", err)
+					log.Warn().Err(err).Msg("Error reading DNS message")
 					return
 				}
 
-				go h.handle(log.WithContext(ctx), buf, c.RemoteAddr().String())
+				go h.handle(connCtx, buf, c.RemoteAddr().String())
 			}
 		}(conn)
 	}
