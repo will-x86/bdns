@@ -2,28 +2,29 @@ package db
 
 import (
 	"database/sql"
-	"log"
 	"os"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pressly/goose/v3"
+	"github.com/rs/zerolog"
 	_ "modernc.org/sqlite"
 )
 
 var db *sqlx.DB
 
-func runMigrations(db *sql.DB, migrationsPath string) {
+func runMigrations(log zerolog.Logger, db *sql.DB, migrationsPath string) {
 	if err := goose.SetDialect("sqlite"); err != nil {
-		log.Fatalf("error setting database dialiect to sqlite : %v", err)
+		log.Fatal().Err(err).Msg("error setting database dialect to sqlite")
 	}
 
 	if err := goose.Up(db, migrationsPath); err != nil {
-		log.Fatalf("error migrating database : %v", err)
+		log.Fatal().Err(err).Str("path", migrationsPath).Msg("error migrating database")
 	}
 
 }
 
-func InitDB(dbPath, migrationsDir string) error {
+func InitDB(log zerolog.Logger, dbPath, migrationsDir string) error {
+	log = log.With().Str("component", "initdb").Logger()
 	var err error
 	db, err = sqlx.Open("sqlite", dbPath)
 	if err != nil {
@@ -33,21 +34,22 @@ func InitDB(dbPath, migrationsDir string) error {
 	if err != nil {
 		return err
 	}
-	runMigrations(db.DB, migrationsDir)
+	runMigrations(log, db.DB, migrationsDir)
 	return nil
 }
 
-func Seed() {
+func Seed(log zerolog.Logger) {
+	log = log.With().Str("component", "db-seed").Logger()
 	path := "./seed.sql"
 
 	c, e := os.ReadFile(path)
 	if e != nil {
-		log.Fatalf("error reading seed file, path: %s, err - %v", path, e)
+		log.Fatal().Err(e).Str("path", path).Msg("error reading seed file")
 	}
 	sql := string(c)
 	_, err := db.Exec(sql)
 	if err != nil {
-		log.Fatalf("error executing seed file, path: %s, err - %v", path, err)
+		log.Fatal().Err(err).Str("path", path).Msg("error executing seed file")
 	}
 }
 func GetDB() *sqlx.DB {

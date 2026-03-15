@@ -3,6 +3,7 @@ package rules
 import (
 	"context"
 
+	"github.com/rs/zerolog"
 	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
@@ -11,6 +12,9 @@ type CategoryBlockRule struct{}
 func (r *CategoryBlockRule) Name() string { return "category_block" }
 
 func (r *CategoryBlockRule) Evaluate(ctx context.Context, rctx *rule.RuleContext) (rule.Decision, error) {
+	log := zerolog.Ctx(ctx).With().Str("component", "category-rule").Logger()
+	ctx = log.WithContext(ctx)
+	log.Trace().Msg("entering evaluate")
 	// First rule that needs category, so cache in rctx
 	category, err := rctx.GetCategory(ctx)
 	if err != nil {
