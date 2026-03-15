@@ -2,12 +2,12 @@ package server
 
 import (
 	"context"
-	"log"
 	"time"
 
-	"github.com/will-x86/bdns/dns/pkg/parser"
-	"github.com/will-x86/bdns/dns/pkg/rcache"
-	"github.com/will-x86/bdns/dns/pkg/rule"
+	"codeberg.org/will-x86/bdns/dns/pkg/parser"
+	"codeberg.org/will-x86/bdns/dns/pkg/rcache"
+	"codeberg.org/will-x86/bdns/dns/pkg/rule"
+	"github.com/rs/zerolog"
 )
 
 type handler struct {
@@ -20,21 +20,22 @@ type handler struct {
 }
 
 func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr string) {
-	log.Printf("Received request from %s\n", remoteAddr)
+	log := zerolog.Ctx(ctx).With().Str("component", "handle").Logger()
+	log.Debug().Msg("recevied request")
 
 	msg := parser.Message()
 	if err := msg.Parse(requestBytes); err != nil {
-		log.Printf("Error parsing DNS message from %s: %v\n", remoteAddr, err)
+		log.Error().Err(err).Msg("error parsing DNS message")
 		return
 	}
-	log.Printf("Parsed request: %s", msg.Header.String())
+	log.Trace().Any("message", msg).Msg("parsed request")
 
 	if len(msg.Questions) == 0 {
-		log.Printf("Request from %s has no questions — dropping\n", remoteAddr)
+		log.Warn().Msg("request has no questions, dropping")
 		return
 	}
 	if len(msg.Questions) > 1 {
-		log.Printf("Request from %s has %d questions\n", remoteAddr, len(msg.Questions))
+		log.Warn().Int("num-questions", len(msg.Questions)).Msg("request has multiple questions")
 	}
 
 	q := msg.Questions[0]
@@ -45,35 +46,41 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 
 	// Refuse non-authed users
 	if h.profileID == "" {
-		log.Printf("No SNI/profileID from %s — refusing\n", remoteAddr)
+		log.Warn().Msg("no sni/profileID from user, refusing")
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
-			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
+			log.Error().Err(err).Msg("error sending REFUSED")
 		}
 		return
 	}
 	if h.stores.Profile == nil {
-		log.Printf("No profile store configured, refusing %s\n", remoteAddr)
+		log.Warn().Msg("no profile store configured, refusing")
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
-			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
+			log.Error().Err(err).Msg("error sending REFUSED")
 		}
 		return
 	}
 	// Pre-grab things every user has, other things such as category
 	profile, user, profileErr := h.stores.Profile.GetProfileWithUser(ctx, h.profileID)
 	if profileErr != nil {
-		log.Printf("DB error fetching profile %s: %v\n", h.profileID, profileErr)
+		log.Error().Str("profile-id", h.profileID).Err(profileErr).Msg("DB error fetching profile")
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
-			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
+			log.Error().Err(err).Msg("error sending REFUSED")
 		}
 		return
 	}
 	if profile == nil {
 		log.Printf("Profile %s not found in DB\n", h.profileID)
+		log.Warn().Str("profile-id", h.profileID).Msg("profile not found in DB")
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
-			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
+			log.Error().Err(err).Msg("error sending REFUSED")
 		}
 		return
 	}
+	log = log.With().
+		Str("profile-id", h.profileID).
+		Str("remote", remoteAddr).
+		Logger()
+	ctx = log.WithContext(ctx)
 
 	decision, ruleErr := h.engine.Evaluate(ctx, &rule.RuleContext{
 		Domain:    q.QName,
@@ -84,12 +91,16 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 		Stores:    h.stores,
 	})
 	if ruleErr != nil {
-		log.Printf("Rule engine error for %s %s: %v\n", q.QName, qtypeStr, ruleErr)
+		log.Error().Err(ruleErr).Str("q-name", q.QName).Str("q-type", qtypeStr).Msg("rule engine error")
 		// Fail open
 	} else if decision.Verdict == rule.VerdictBlock {
-		log.Printf("Blocked %s %s for profile %s: %s\n", q.QName, qtypeStr, h.profileID, decision.Reason)
+		log.Info().
+			Str("q-name", q.QName).
+			Str("q-type", qtypeStr).
+			Str("reason", decision.Reason).
+			Msg("blocked query")
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
-			log.Printf("Error sending REFUSED to %s: %v\n", remoteAddr, err)
+			log.Error().Err(err).Msg("error sending REFUSED")
 		}
 		return
 	}
@@ -101,7 +112,7 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 
 	if h.cache != nil {
 		responseBytes, err = h.cache.QueryRace(
-			ctx,
+			log.WithContext(ctx),
 			requestBytes,
 			q.QName,
 			qtypeStr,
@@ -114,20 +125,19 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 	}
 
 	if err != nil {
-		log.Printf("Error resolving %s %s: %v\n", q.QName, qtypeStr, err)
+		log.Error().Err(err).Str("q-name", q.QName).Str("q-type", qtypeStr).Msg("error resolving query")
 		return
 	}
-
 	if err := h.write(responseBytes); err != nil {
-		log.Printf("Error sending response to client %s: %v\n", remoteAddr, err)
+		log.Error().Err(err).Msg("error sending response")
 		return
 	}
-	log.Printf("Sent response to client %s\n", remoteAddr)
+	log.Debug().Msg("sent response")
 
 	resMsg := parser.Message()
 	if err := resMsg.Parse(responseBytes); err != nil {
-		log.Printf("Error parsing DNS response: %v\n", err)
+		log.Warn().Err(err).Msg("error parsing DNS response")
 		return
 	}
-	log.Printf("Parsed response %s", resMsg.Header.String())
+	log.Trace().Str("header", resMsg.Header.String()).Msg("parsed response")
 }

@@ -153,3 +153,7 @@ kdig @127.0.0.1 -p 8533 +tls-sni=aabbccdd.dns.example.com google.com # accepted
 ## Extra idk 
 - [ ] DNSSEC Validation
 - [ ] Mobile app
+
+
+
+

@@ -3,6 +3,8 @@ package rule
 import (
 	"context"
 	"fmt"
+
+	"github.com/rs/zerolog"
 )
 
 type Verdict int
@@ -36,6 +38,9 @@ func NewEngine(rules ...Rule) *Engine {
 }
 
 func (e *Engine) Evaluate(ctx context.Context, rctx *RuleContext) (Decision, error) {
+	log := zerolog.Ctx(ctx).With().Str("component", "rule-engine").Logger()
+	ctx = log.WithContext(ctx)
+
 	for _, rule := range e.rules {
 		d, err := rule.Evaluate(ctx, rctx)
 		if err != nil {

@@ -5,11 +5,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/parser"
+	"github.com/rs/zerolog"
 	"github.com/valkey-io/valkey-go"
-	"github.com/will-x86/bdns/dns/pkg/parser"
 )
 
 type DNSCache interface {
@@ -90,6 +90,7 @@ func queryRace(
 	domain, qtype string,
 	upstream func(ctx context.Context) ([]byte, error),
 ) ([]byte, error) {
+	log := zerolog.Ctx(ctx)
 	if len(requestBytes) < 2 {
 		return nil, fmt.Errorf("request too short to contain transaction ID")
 	}
@@ -142,11 +143,11 @@ func queryRace(
 		binary.BigEndian.PutUint16(out[0:2], reqID)
 
 		if r.source == "upstream" {
-			log.Printf("Upstream win for %s %s\n", domain, qtype)
+			log.Debug().Str("domain", domain).Str("q-type", qtype).Msg("upstream win")
 			// Best effort
 			_ = store.Set(ctx, store.DomainDNSCacheKey(domain, qtype), out, minTTLFromResponse(out))
 		} else {
-			log.Printf("Cache win for %s %s\n", domain, qtype)
+			log.Debug().Str("domain", domain).Str("q-type", qtype).Msg("cache win")
 		}
 
 		return out, nil

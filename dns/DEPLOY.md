@@ -16,8 +16,9 @@ This DNS needs to bypass any proxy, primarily as we identify users via SNI ( whi
 #### self-signed certs
 ( Just hit enter a bunch ! )
 ```bash
-openssl genrsa -out server.key 2048\
-openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650\
+openssl genrsa -out server.key 2048
+
+openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
 ```
 #### certbot certs
 ```bash
@@ -120,6 +121,7 @@ KEY_PATH=/etc/letsencrypt/live/dns.domain.com/privkey.pem
 VALKEY_ADDR=valkey:6379
 CRT_PATH=/etc/letsencrypt/live/dns.domain.com/fullchain.pem
 PORT=853
+LOG_LEVEL=warn
 ```
 6. Profit .. ? 
 

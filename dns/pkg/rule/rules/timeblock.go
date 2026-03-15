@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
-	"github.com/will-x86/bdns/dns/pkg/rule"
+	"codeberg.org/will-x86/bdns/dns/pkg/rule"
+	"github.com/rs/zerolog"
 )
 
 /*
@@ -19,6 +19,9 @@ type TimeBlockRule struct{}
 func (r *TimeBlockRule) Name() string { return "timeblock_rule" }
 
 func (r *TimeBlockRule) Evaluate(ctx context.Context, rctx *rule.RuleContext) (rule.Decision, error) {
+	log := zerolog.Ctx(ctx).With().Str("component", "timeblock-rule").Logger()
+	ctx = log.WithContext(ctx)
+	log.Trace().Msg("entering evaluate on timezone rule ")
 	// is this category currently fully blocked for the user
 	// e.g. "block social media 9-12am
 	// factors into account users timezzone
@@ -44,7 +47,7 @@ func (r *TimeBlockRule) Evaluate(ctx context.Context, rctx *rule.RuleContext) (r
 	location, err := time.LoadLocation(rctx.User.Timezone)
 	if err != nil {
 		// Should *never* fail
-		log.Fatalf("Users time-zone is wrong %v", err)
+		log.Fatal().Err(err).Str("timezone", rctx.User.Timezone).Msg("users timezone is wrong")
 	}
 	intervalToTime := func(interval int) string {
 		hours := interval / 4

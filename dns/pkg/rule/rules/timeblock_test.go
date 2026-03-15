@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/will-x86/bdns/dns/pkg/db"
 	"github.com/will-x86/bdns/dns/pkg/db/models"
 	"github.com/will-x86/bdns/dns/pkg/rule"
@@ -212,7 +213,7 @@ func TestTimeBlockRule_Timezone_OutsideBlock(t *testing.T) {
 
 func initTestDB(t *testing.T) *db.SQLiteStores {
 	t.Helper()
-	if err := db.InitDB(":memory:", migrationsDir); err != nil {
+	if err := db.InitDB(zerolog.Nop(), ":memory:", migrationsDir); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	return db.NewStores(db.GetDB())

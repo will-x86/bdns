@@ -8,16 +8,16 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"net"
 	"os"
 	"strings"
 	"sync"
 
-	"github.com/will-x86/bdns/dns/pkg/db"
-	"github.com/will-x86/bdns/dns/pkg/proxy"
-	"github.com/will-x86/bdns/dns/pkg/rcache"
-	"github.com/will-x86/bdns/dns/pkg/rule"
+	"codeberg.org/will-x86/bdns/dns/pkg/db"
+	"codeberg.org/will-x86/bdns/dns/pkg/proxy"
+	"codeberg.org/will-x86/bdns/dns/pkg/rcache"
+	"codeberg.org/will-x86/bdns/dns/pkg/rule"
+	"github.com/rs/zerolog"
 )
 
 type DNSUpstream interface {
@@ -58,52 +58,53 @@ type ServerConfig struct {
 }
 
 // Print all files in cert dir & panic, to hopefully be useful to user
-func tlsNiceExitNoCert(dir string, err error) {
+func tlsNiceExitNoCert(ctx context.Context, dir string, err error) {
+	log := zerolog.Ctx(ctx)
 	if dir == "" {
-		log.Fatal("cert dir is \"\", cannot read tls certificate")
+		log.Fatal().Msg("cert/privkey dir env var is empty, cannot read tls certificate")
 	}
 	directory := strings.Split(dir, "/")
 	// Assume /dir/dir/example.{pem/crt}
 	if len(directory) > 0 {
 		entires, dirErr := os.ReadDir(strings.Join(directory[0:len(directory)-1], ""))
 		if dirErr != nil {
-			log.Fatalf("error reading tls cert: %+v", err)
+			log.Fatal().Err(err).Msg("error reading tls cert")
 		}
 		for _, v := range entires {
-			log.Printf("Entry in cert dir: %s", v.Name())
+			log.Info().Str("entry in cert dir", v.Name()).Send()
 		}
 	} else {
-		log.Printf("Directory: %v", directory)
+		log.Debug().Any("directory", directory).Send()
 	}
-	log.Fatalf("tls cert directory error, path cannot be parsed either %v", err) // Exit
+	log.Fatal().Err(err).Msg("tls cert direcotry error, path cannot be parsed either")
 }
 func RunServer(ctx context.Context, c *ServerConfig) {
-
+	log := zerolog.Ctx(ctx).With().Str("component", "server").Logger()
 	cert, err := tls.LoadX509KeyPair(c.SignedKey, c.PrivateKey)
 	if err != nil {
 		var pathErr *fs.PathError
 		if errors.As(err, &pathErr) {
-			tlsNiceExitNoCert(c.SignedKey, err)
+			tlsNiceExitNoCert(ctx, c.SignedKey, err)
 		}
-		log.Fatalf("cannot load certificate %v", err)
+		log.Fatal().Err(err).Msg("cannot load certificate")
 	}
 	listener, err := tls.Listen("tcp", fmt.Sprintf(":%d", c.Port), &tls.Config{
 		Certificates: []tls.Certificate{cert},
 	})
 	if err != nil {
-		log.Fatalf("failed to listen on port %d, with error: %v", c.Port, err)
+		log.Fatal().Err(err).Int("port", c.Port).Msg("failed to listen on port")
 	}
 	defer listener.Close()
 
 	go func() {
 		<-ctx.Done()
-		log.Println("Shutting down server...")
+		log.Info().Msg("Shutting down server")
 		listener.Close()
 	}()
 
 	cache, err := rcache.New(c.ValkeyAddr)
 	if err != nil {
-		log.Printf("could not connect to Valkey at %s: %v — continuing without cache", c.ValkeyAddr, err)
+		log.Warn().Err(err).Str("valkey-addr", c.ValkeyAddr).Msg("could not connect to valkey, continuing without cache")
 		cache = nil
 	}
 
@@ -118,19 +119,21 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 	engine := proxy.BuildEngine(ruleStores)
 
 	upstream := proxy.NewTLSClient("1.1.1.1", 853, "cloudflare-dns.com")
-	log.Printf("Listening on TLS: %d", c.Port)
+	log.Info().Int("port", c.Port).Msg("listening...")
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Println("Error on accepting listender for a connection :", err)
+			log.Error().Err(err).Msg("error on accepting listener for a conn")
 			continue
 		}
 		go func(c net.Conn) {
+			log := log.With().Str("remote", c.RemoteAddr().String()).Logger()
+			connCtx := log.WithContext(ctx)
 			defer c.Close()
 			tlsConn := c.(*tls.Conn)
 			if err := tlsConn.Handshake(); err != nil {
-				log.Printf("TLS handshake error: %v\n", err)
+				log.Warn().Err(err).Msg("tls handkshake error")
 				return
 			}
 			fullSNI := tlsConn.ConnectionState().ServerName
@@ -140,11 +143,11 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 				profileID = parts[0]
 			}
 			if profileID == "" {
-				log.Printf("No SNI/profileID from %s — refusing\n", c.RemoteAddr())
+				log.Warn().Msg("no sni/profileID")
 				return
 			}
 
-			log.Printf("Client SNI(profileID): %s\n", profileID)
+			log.Debug().Str("sni", fullSNI).Str("profileID", profileID).Send()
 
 			var mu sync.Mutex
 			h := &handler{
@@ -170,18 +173,18 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 				var msgLen uint16
 				if err := binary.Read(c, binary.BigEndian, &msgLen); err != nil {
 					if err != io.EOF {
-						log.Printf("Error reading length prefix: %v\n", err)
+						log.Warn().Err(err).Msg("Error reading length prefix")
 					}
 					return
 				}
 
 				buf := make([]byte, msgLen)
 				if _, err := io.ReadFull(c, buf); err != nil {
-					log.Printf("Error reading DNS message: %v\n", err)
+					log.Warn().Err(err).Msg("Error reading DNS message")
 					return
 				}
 
-				go h.handle(ctx, buf, c.RemoteAddr().String())
+				go h.handle(connCtx, buf, c.RemoteAddr().String())
 			}
 		}(conn)
 	}

@@ -3,11 +3,11 @@ package db
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/db/models"
 	"github.com/jmoiron/sqlx"
-	"github.com/will-x86/bdns/dns/pkg/db/models"
+	"github.com/rs/zerolog"
 )
 
 // Impls stores from pkg/rule/context.go & CategoryResolver
@@ -95,7 +95,8 @@ func (s *SQLiteStores) GetProfileWithUser(ctx context.Context, profileID string)
 
 // Check DB if domain is categorized, if not ""
 func (s *SQLiteStores) ResolveCategory(ctx context.Context, domain string) (string, error) {
-	log.Printf("resolving category for domain: %s", domain)
+	log := zerolog.Ctx(ctx).With().Str("component", "db-stores").Logger()
+	log.Debug().Str("domain", domain).Msg("resolving category")
 	var category string
 	err := s.db.QueryRowContext(ctx,
 		`SELECT category FROM blocklist_entries WHERE domain = ? LIMIT 1`,
@@ -108,7 +109,8 @@ func (s *SQLiteStores) ResolveCategory(ctx context.Context, domain string) (stri
 }
 
 func (s *SQLiteStores) GetTimeBlocks(ctx context.Context, profileID, category string) ([]models.TimeBlock, error) {
-	log.Printf("Grabbing timeblocks for profile ID %s with category %s", profileID, category)
+	log := zerolog.Ctx(ctx).With().Str("component", "db-stores").Logger()
+	log.Debug().Str("profileID", profileID).Str("category", category).Msg("getting timeblocks")
 	var timeblocks []models.TimeBlock
 	err := s.db.SelectContext(ctx, &timeblocks, "SELECT * FROM user_time_blocks WHERE profile_id=? AND category=?", profileID, category)
 	if err != nil {

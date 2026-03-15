@@ -1,32 +1,55 @@
 package main
 
-// https://github.com/cmol/dns
-// https://harshagarwal29.hashnode.dev/building-a-dns-resolver-in-golang-a-step-by-step-guide
 import (
 	"context"
 	"flag"
-	"log"
+	"github.com/UnnoTed/horizontal"
 	"os"
 	"strconv"
+	"strings"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/db"
+	"codeberg.org/will-x86/bdns/dns/pkg/server"
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/will-x86/bdns/dns/pkg/db"
-	"github.com/will-x86/bdns/dns/pkg/server"
+	"github.com/rs/zerolog"
 )
 
-func getConfig() server.ServerConfig {
+func main() {
+
+	// flags
+	ingest := flag.Bool("ingest", false, "download and ingest StevenBlack blocklist")
+	seed := flag.Bool("seed", false, "seed with init.sql")
+	flag.Parse()
+	//config
+	config, log := configAndLogger()
+
+	// db setup + ingest
+	//	dbLog := log.With().Str("component", "database").Logger()
+	if err := db.InitDB(log, "./app.db", "./migrations/"); err != nil {
+		log.Fatal().Err(err).Msg("failed to initalize datavase")
+	}
+	if *seed {
+		db.Seed(log)
+	}
+
+	if *ingest {
+		log.Debug().Msg("ingesting blocklist")
+		if err := db.Ingest(); err != nil {
+			log.Fatal().Err(err).Msg("ingest failed")
+		}
+		log.Debug().Msg("ingesting done")
+	}
+
+	ctx := context.Background()
+	ctx = log.WithContext(ctx)
+	server.RunServer(ctx, &config)
+}
+func configAndLogger() (server.ServerConfig, zerolog.Logger) {
 	c := server.ServerConfig{
 		PrivateKey: os.Getenv("KEY_PATH"),
 		SignedKey:  os.Getenv("CRT_PATH"),
+		ValkeyAddr: os.Getenv("VALKEY_ADDR"),
 	}
-
-	c.ValkeyAddr = func() string {
-		vA := os.Getenv("VALKEY_ADDR")
-		if vA == "" {
-			return "localhost:6379"
-		}
-		return vA
-	}()
 	c.Port = func() int {
 		port, err := strconv.Atoi(os.Getenv("PORT"))
 		if err != nil {
@@ -35,30 +58,43 @@ func getConfig() server.ServerConfig {
 		return port
 
 	}()
-	return c
-}
-func main() {
-	ingest := flag.Bool("ingest", false, "download and ingest StevenBlack blocklist")
-	seed := flag.Bool("seed", false, "seed with init.sql")
-	flag.Parse()
-	config := getConfig()
-	if err := db.InitDB("./app.db", "./migrations/"); err != nil {
-		log.Fatalf("Failed to initialize database: %v\n", err)
-	}
-	if *seed {
-		db.Seed()
-	}
-
-	if *ingest {
-		log.Println("Ingesting blocklist...")
-		if err := db.Ingest(); err != nil {
-			log.Fatalf("Ingest failed: %v\n", err)
+	// default to warn
+	logLevel := func() zerolog.Level {
+		level := os.Getenv("LOG_LEVEL")
+		level = strings.ToLower(level)
+		switch level {
+		case "panic":
+			return zerolog.PanicLevel
+		case "fatal":
+			return zerolog.FatalLevel
+		case "error":
+			return zerolog.ErrorLevel
+		case "warn":
+			return zerolog.WarnLevel
+		case "info":
+			return zerolog.InfoLevel
+		case "debug":
+			return zerolog.DebugLevel
+		case "trace":
+			return zerolog.TraceLevel
+		default:
+			return zerolog.WarnLevel
 		}
-		log.Println("Done.")
-		return
+	}()
+	var log zerolog.Logger
+	zerolog.SetGlobalLevel(logLevel)
+	{
+		eKey := "ENVIRONMENT" // I really can't trust myself to spell
+		// Hopefully this makes it a little obvious we're using "production" as a key
+		if os.Getenv(eKey) == "" || os.Getenv(eKey) == "production" {
+			os.Setenv(eKey, "production")
+			log = zerolog.New(os.Stdout).With().Timestamp().Logger()
+		} else if os.Getenv(eKey) == "local" {
+			// local, pretty !!
+			log = log.Output(horizontal.ConsoleWriter{Out: os.Stdout})
+		}
 	}
-
-	log.Printf("Starting server...\n")
-	ctx := context.Background()
-	server.RunServer(ctx, &config)
+	log.Info().Any("config", c).Msg("Starting server")
+	log.Debug().Str("log_level", logLevel.String()).Msg("log level:")
+	return c, log
 }
