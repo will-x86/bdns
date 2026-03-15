@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"time"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/db/models"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog"
-	"github.com/will-x86/bdns/dns/pkg/db/models"
 )
 
 // Impls stores from pkg/rule/context.go & CategoryResolver

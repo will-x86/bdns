@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/db"
+	"codeberg.org/will-x86/bdns/dns/pkg/server"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/rs/zerolog"
-	"github.com/will-x86/bdns/dns/pkg/db"
-	"github.com/will-x86/bdns/dns/pkg/server"
 )
 
 func main() {

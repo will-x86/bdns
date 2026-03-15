@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"math"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/parser"
 	"github.com/rs/zerolog"
 	"github.com/valkey-io/valkey-go"
-	"github.com/will-x86/bdns/dns/pkg/parser"
 )
 
 type DNSCache interface {

@@ -1,4 +1,4 @@
-module github.com/will-x86/bdns/dns
+module codeberg.org/will-x86/bdns/dns
 
 go 1.25.5
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/will-x86/bdns/dns/pkg/db/models"
+	"codeberg.org/will-x86/bdns/dns/pkg/db/models"
 )
 
 type ProfileStore interface {

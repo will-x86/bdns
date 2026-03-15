@@ -13,11 +13,11 @@ import (
 	"strings"
 	"sync"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/db"
+	"codeberg.org/will-x86/bdns/dns/pkg/proxy"
+	"codeberg.org/will-x86/bdns/dns/pkg/rcache"
+	"codeberg.org/will-x86/bdns/dns/pkg/rule"
 	"github.com/rs/zerolog"
-	"github.com/will-x86/bdns/dns/pkg/db"
-	"github.com/will-x86/bdns/dns/pkg/proxy"
-	"github.com/will-x86/bdns/dns/pkg/rcache"
-	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
 type DNSUpstream interface {
