@@ -88,3 +88,4 @@ kdig @127.0.0.1 -p 8533 +tls-sni=aabbccdd.dns.example.com google.com # accepted
 
 
 
+https://codeberg.org/will-x86/bdns/issues/3
