@@ -119,3 +119,27 @@ func (s *SQLiteStores) GetTimeBlocks(ctx context.Context, profileID, category st
 
 	return timeblocks, nil
 }
+func (s *SQLiteStores) GetPool(ctx context.Context, poolID string) (models.FriendPool, error) {
+	log := zerolog.Ctx(ctx).With().Str("component", "db-stores").Logger()
+	log.Debug().Str("poolID", poolID).Msg("getting pool")
+	var pool models.FriendPool
+	err := s.db.SelectContext(ctx, &pool, "SELECT * FROM friend_pools WHERE pool_id =?", poolID)
+	if err != nil {
+		return models.FriendPool{}, err
+	}
+	return pool, nil
+}
+
+// Checks if a cateogory is blocked for a given pool
+func (s *SQLiteStores) PoolCategoryBlocked(ctx context.Context, poolID, category string) bool {
+	log := zerolog.Ctx(ctx).With().Str("component", "db-stores-pool-cateogry-blocked").Logger()
+	log.Debug().Str("poolID", poolID).Str("category", category).Msg("getting pool")
+	var blocks any
+	err := s.db.Get(&blocks, "SELECT * FROM friend_pool_category_blocks WHERE pool_id=? AND category=?", poolID, category)
+	if err != nil {
+		log.Debug().Err(err).Msg("grabbing pool category blocked failed")
+		return false
+	}
+
+	return true
+}

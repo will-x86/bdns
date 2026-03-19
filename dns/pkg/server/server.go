@@ -17,6 +17,7 @@ import (
 	"codeberg.org/will-x86/bdns/dns/pkg/proxy"
 	"codeberg.org/will-x86/bdns/dns/pkg/rcache"
 	"codeberg.org/will-x86/bdns/dns/pkg/rule"
+	"codeberg.org/will-x86/bdns/dns/pkg/store"
 	"github.com/rs/zerolog"
 )
 
@@ -109,12 +110,21 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 	}
 
 	stores := db.NewStores(db.GetDB())
+	var poolCacheStore store.Pool
+	poolCacheStore, err = store.NewValkey(c.ValkeyAddr)
+	if err != nil {
+		log.Warn().Err(err).Str("valkey-addr", c.ValkeyAddr).Msg("valkey could not connect, default to memory storage for pool limits")
+		poolCacheStore = store.NewMemory()
+
+	}
 	ruleStores := rule.Stores{
 		Profile:   stores,
 		Whitelist: stores,
 		Category:  stores,
 		TimeBlock: stores,
 		Resolve:   stores.ResolveCategory,
+		PoolCache: poolCacheStore,
+		PoolDB:    stores,
 	}
 	engine := proxy.BuildEngine(ruleStores)
 

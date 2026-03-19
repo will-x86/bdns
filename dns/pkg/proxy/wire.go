@@ -12,5 +12,7 @@ func BuildEngine(stores rule.Stores) *rule.Engine {
 		&rules.TemporaryWhitelistRule{},
 		&rules.CategoryBlockRule{},
 		&rules.TimeBlockRule{},
+		&rules.SharedPoolRule{},
+		&rules.BorrowPoolRule{},
 	)
 }

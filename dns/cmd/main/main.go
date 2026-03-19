@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/UnnoTed/horizontal"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/UnnoTed/horizontal"
 
 	"codeberg.org/will-x86/bdns/dns/pkg/db"
 	"codeberg.org/will-x86/bdns/dns/pkg/server"

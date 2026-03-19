@@ -29,6 +29,7 @@ CREATE TABLE friend_pool_category_blocks (
 );
 -- +goose StatementEnd
 -- +goose Down
+
 -- +goose StatementBegin
 DROP TABLE IF EXISTS friend_pool_invites;
 DROP TABLE IF EXISTS friend_pool_category_blocks;

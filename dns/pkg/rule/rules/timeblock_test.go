@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/db"
+	"codeberg.org/will-x86/bdns/dns/pkg/db/models"
+	"codeberg.org/will-x86/bdns/dns/pkg/rule"
 	"github.com/rs/zerolog"
-	"github.com/will-x86/bdns/dns/pkg/db"
-	"github.com/will-x86/bdns/dns/pkg/db/models"
-	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
 const migrationsDir = "../../../migrations/"

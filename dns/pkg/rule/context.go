@@ -25,13 +25,16 @@ type TimeBlockStore interface {
 	GetTimeBlocks(ctx context.Context, profileID, category string) ([]models.TimeBlock, error)
 }
 
-/*
-
-type FriendshipStore interface {
-	GetFriendship(ctx context.Context, userID string) (*models.Friendship, bool, error)
-	DecrementAndCheck(ctx context.Context, friendshipID, userID string, poolSize int, date string) (bool, error)
+type PoolCacheStore interface {
+	PoolID(ctx context.Context, profileID string) (string, error) // Returns pool_id with profile_id
+	Exists(ctx context.Context, profileID, poolID string) bool    // Sees if a pool exists with
+	// Decrement // increment
 }
-*/
+
+type PoolDBStore interface {
+	GetPool(ctx context.Context, poolID string) (models.FriendPool, error)
+	PoolCategoryBlocked(ctx context.Context, poolID, category string) bool
+}
 
 // CategoryResolver resolves a domain to a category (sits in rcache, injected here)
 type CategoryResolver func(ctx context.Context, domain string) (string, error)
@@ -41,8 +44,9 @@ type Stores struct {
 	Whitelist WhitelistStore
 	Category  CategoryStore
 	TimeBlock TimeBlockStore
-	//	Friendship FriendshipStore
-	Resolve CategoryResolver
+	PoolCache PoolCacheStore
+	PoolDB    PoolDBStore
+	Resolve   CategoryResolver
 }
 
 type RuleContext struct {
@@ -53,10 +57,22 @@ type RuleContext struct {
 	User      *models.User
 
 	category *string
+	pool     *models.FriendPool
 
 	Stores Stores
 }
 
+func (r *RuleContext) GetPool(ctx context.Context, poolID string) (models.FriendPool, error) {
+	if r.pool != nil {
+		return *r.pool, nil
+	}
+	pol, err := r.Stores.PoolDB.GetPool(ctx, poolID)
+	if err != nil {
+		return models.FriendPool{}, err
+	}
+	r.pool = &pol
+	return *r.pool, nil
+}
 func (r *RuleContext) GetCategory(ctx context.Context) (string, error) {
 	if r.category != nil {
 		return *r.category, nil
