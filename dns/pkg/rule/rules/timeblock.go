@@ -35,6 +35,7 @@ func (r *TimeBlockRule) Evaluate(ctx context.Context, rctx *rule.RuleContext) (r
 	}
 	// No category, therefore cannot have timeblock block
 	if category == "" {
+		log.Trace().Msg("no category, passing through")
 		return rule.PassThrough(), nil
 	}
 	blocks, err := rctx.Stores.TimeBlock.GetTimeBlocks(ctx, rctx.ProfileID, category)
@@ -63,12 +64,15 @@ func (r *TimeBlockRule) Evaluate(ctx context.Context, rctx *rule.RuleContext) (r
 	// 0 = 00:00-00:15
 	// 20 = 05:00-05:15
 	for k := range blocks {
-		if blocks[k].StartTime <= intervalIn && blocks[k].EndTime >= intervalIn {
-			// User is time blocked
-			// EndTime is +1 as end time is inclusive
-			return rule.Blocked(fmt.Sprintf("time block on %s category is active from %s to %s",
-				category, intervalToTime(blocks[k].StartTime), intervalToTime(blocks[k].EndTime+1))), nil
+		if blocks[k].Day == int(now.Weekday()) {
+			if blocks[k].StartTime <= intervalIn && blocks[k].EndTime >= intervalIn {
+				// User is time blocked
+				// EndTime is +1 as end time is inclusive
+				return rule.Blocked(fmt.Sprintf("time block on %s category is active from %s to %s",
+					category, intervalToTime(blocks[k].StartTime), intervalToTime(blocks[k].EndTime+1))), nil
+			}
 		}
 	}
-	return rule.Allowed("permanent whitelist"), nil
+	//return rule.Allowed("timeblock allowed"), nil
+	return rule.PassThrough(), nil
 }

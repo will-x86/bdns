@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/db/models"
 	"github.com/jmoiron/sqlx"
 	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog"
@@ -72,4 +73,21 @@ func CreateProfile(userID, name string) (string, error) {
 		userID, name,
 	).Scan(&id)
 	return id, err
+}
+func GetAllFriendPoolMembers() ([]models.FriendPoolMembers, error) {
+	var poolMembers []models.FriendPoolMembers
+	err := db.Select(&poolMembers, "SELECT * FROM friend_pool_members")
+	if err != nil {
+		return []models.FriendPoolMembers{}, err
+	}
+	return poolMembers, nil
+
+}
+func GetAllFriendPools() ([]models.FriendPool, error) {
+	var friendPools []models.FriendPool
+	err := db.Select(&friendPools, "SELECT * FROM friend_pools")
+	if err != nil {
+		return []models.FriendPool{}, err
+	}
+	return friendPools, nil
 }

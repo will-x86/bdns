@@ -113,7 +113,7 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 	var poolCacheStore store.Pool
 	poolCacheStore, err = store.NewValkey(c.ValkeyAddr)
 	if err != nil {
-		log.Warn().Err(err).Str("valkey-addr", c.ValkeyAddr).Msg("valkey could not connect, default to memory storage for pool limits")
+		log.Warn().Err(err).Str("valkey-addr", c.ValkeyAddr).Msg("valkey had an error, default to memory storage for pool limits")
 		poolCacheStore = store.NewMemory()
 
 	}

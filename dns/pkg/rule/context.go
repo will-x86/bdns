@@ -28,7 +28,10 @@ type TimeBlockStore interface {
 type PoolCacheStore interface {
 	PoolID(ctx context.Context, profileID string) (string, error) // Returns pool_id with profile_id
 	Exists(ctx context.Context, profileID, poolID string) bool    // Sees if a pool exists with
-	// Decrement // increment
+	DecrementRemainingBorrow(ctx context.Context, poolID, profileID string) error
+	GetRemainingShared(ctx context.Context, poolID string) (int64, error)
+	DecrementRemainingShared(ctx context.Context, poolID string) error
+	GetRemainingBorrow(ctx context.Context, poolID, profileID string) (int64, error)
 }
 
 type PoolDBStore interface {

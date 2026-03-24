@@ -42,13 +42,17 @@ func (e *Engine) Evaluate(ctx context.Context, rctx *RuleContext) (Decision, err
 	ctx = log.WithContext(ctx)
 
 	for _, rule := range e.rules {
+		log.Trace().Str("rule", rule.Name()).Msg("running rule")
 		d, err := rule.Evaluate(ctx, rctx)
 		if err != nil {
+			log.Trace().Err(err).Str("reason", d.Reason).Msg("error on rule")
 			return Decision{}, fmt.Errorf("rule %q: %w", rule.Name(), err)
 		}
 		if d.Verdict != VerdictPassThrough {
+			log.Trace().Str("rule", rule.Name()).Any("verdict", d.Verdict).Str("reason", d.Reason).Msg("verdict is not pass through")
 			return d, nil
 		}
 	}
+	log.Trace().Msg("no rules matched, passing through")
 	return Allowed("no rules matched"), nil
 }

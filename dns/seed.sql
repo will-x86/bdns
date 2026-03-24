@@ -71,4 +71,4 @@ INSERT OR IGNORE INTO friend_pool_members(pool_id, profile_id) VALUES ('pool1', 
 INSERT OR IGNORE INTO friend_pool_members(pool_id, profile_id) VALUES ('pool1', 'profile2');
 INSERT OR IGNORE INTO friend_pool_members(pool_id, profile_id) VALUES ('pool1', 'profile3');
 
-INSERT OR IGNORE INTO friend_pool_category_blocks(pool_id, category) VALUES ('pool1', 'social_media');
+INSERT OR IGNORE INTO friend_pool_category_blocks(pool_id, category) VALUES ('pool1', 'social');
