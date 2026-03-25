@@ -14,10 +14,12 @@ func SecondsUntil4AM(ctx context.Context, tz string, now time.Time) int {
 		// Should *never* fail
 		log.Fatal().Err(err).Str("timezone", tz).Msg("users timezone is wrong")
 	}
-	now = now.In(location)
-	if now.Hour() >= 4 { // after or in 4am
-		return int(time.Until(time.Date(now.Year(), now.Month(), now.Day()+1, 4, 0, 0, 0, location)).Seconds())
+	local := now.In(location)
+	var target time.Time
+	if local.Hour() >= 4 {
+		target = time.Date(local.Year(), local.Month(), local.Day()+1, 4, 0, 0, 0, location)
 	} else {
-		return int(time.Until(time.Date(now.Year(), now.Month(), now.Day(), 4, 0, 0, 0, location)).Seconds())
+		target = time.Date(local.Year(), local.Month(), local.Day(), 4, 0, 0, 0, location)
 	}
+	return int(target.Sub(now).Seconds())
 }
