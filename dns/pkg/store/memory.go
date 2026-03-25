@@ -107,3 +107,12 @@ func (p *PoolMemory) DecrementRemainingShared(_ context.Context, poolID string) 
 	p.shared[key]--
 	return nil
 }
+
+func (p *PoolMemory) ResetBorrow(ctx context.Context, poolID, profileID string, limit int64, ttlSeconds int64) error {
+	return errors.New("reset borrow memory unimplemented")
+}
+
+func (p *PoolMemory) ResetShared(ctx context.Context, poolID string, limit int64, ttlSeconds int64) error {
+
+	return errors.New("reset shared memory unimplemented")
+}

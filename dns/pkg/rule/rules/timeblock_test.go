@@ -102,14 +102,14 @@ func TestTimeBlockRule_EmptyBlocks_Allowed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.Verdict != rule.VerdictAllow {
-		t.Fatalf("want Allow, got %v", d.Verdict)
+	if d.Verdict != rule.VerdictPassThrough {
+		t.Fatalf("want Passthrough, got %v", d.Verdict)
 	}
 }
 
 // now = 09:00 UTC -> interval 36; block covers 32–39 (08:00–10:00)
 func TestTimeBlockRule_InsideBlock_Blocked(t *testing.T) {
-	now := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 1, 4, 9, 0, 0, 0, time.UTC)
 	blocks := []models.TimeBlock{{StartTime: 32, EndTime: 39, Category: "social"}}
 	rctx := makeCtx("social", fakeTimeBlockStore{blocks: blocks}, now, "UTC")
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
@@ -126,35 +126,35 @@ func TestTimeBlockRule_InsideBlock_Blocked(t *testing.T) {
 
 // now = 07:59 UTC -> interval 31; block covers 32–39 (08:00–10:00)
 func TestTimeBlockRule_BeforeBlock_Allowed(t *testing.T) {
-	now := time.Date(2026, 1, 1, 7, 59, 0, 0, time.UTC)
+	now := time.Date(2026, 1, 4, 7, 59, 0, 0, time.UTC)
 	blocks := []models.TimeBlock{{StartTime: 32, EndTime: 39, Category: "social"}}
 	rctx := makeCtx("social", fakeTimeBlockStore{blocks: blocks}, now, "UTC")
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.Verdict != rule.VerdictAllow {
-		t.Fatalf("want Allow at 07:59 before [08:00,10:00], got %v", d.Verdict)
+	if d.Verdict != rule.VerdictPassThrough {
+		t.Fatalf("want PassThrough at 07:59 before [08:00,10:00], got %v", d.Verdict)
 	}
 }
 
 // now = 10:01 UTC -> interval 40; block covers 32–39 (08:00–10:00)
 func TestTimeBlockRule_AfterBlock_Allowed(t *testing.T) {
-	now := time.Date(2026, 1, 1, 10, 1, 0, 0, time.UTC)
+	now := time.Date(2026, 1, 4, 10, 1, 0, 0, time.UTC)
 	blocks := []models.TimeBlock{{StartTime: 32, EndTime: 39, Category: "social"}}
 	rctx := makeCtx("social", fakeTimeBlockStore{blocks: blocks}, now, "UTC")
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.Verdict != rule.VerdictAllow {
-		t.Fatalf("want Allow at 10:01 after [08:00,10:00], got %v", d.Verdict)
+	if d.Verdict != rule.VerdictPassThrough {
+		t.Fatalf("want Pass throughat 10:01 after [08:00,10:00], got %v", d.Verdict)
 	}
 }
 
 // Block boundary: now exactly at StartTime interval.
 func TestTimeBlockRule_AtStartBoundary_Blocked(t *testing.T) {
-	now := time.Date(2026, 1, 1, 8, 0, 0, 0, time.UTC) // interval 32
+	now := time.Date(2026, 1, 4, 8, 0, 0, 0, time.UTC) // interval 32
 	blocks := []models.TimeBlock{{StartTime: 32, EndTime: 39, Category: "social"}}
 	rctx := makeCtx("social", fakeTimeBlockStore{blocks: blocks}, now, "UTC")
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
@@ -168,7 +168,7 @@ func TestTimeBlockRule_AtStartBoundary_Blocked(t *testing.T) {
 
 // Block boundary: now exactly at EndTime interval.
 func TestTimeBlockRule_AtEndBoundary_Blocked(t *testing.T) {
-	now := time.Date(2026, 1, 1, 9, 45, 0, 0, time.UTC) // interval 39
+	now := time.Date(2026, 1, 4, 9, 45, 0, 0, time.UTC) // interval 39
 	blocks := []models.TimeBlock{{StartTime: 32, EndTime: 39, Category: "social"}}
 	rctx := makeCtx("social", fakeTimeBlockStore{blocks: blocks}, now, "UTC")
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
@@ -183,7 +183,7 @@ func TestTimeBlockRule_AtEndBoundary_Blocked(t *testing.T) {
 // Timezone: block is 08:00–10:00 UTC stored, user is in America/New_York (UTC-5).
 // now = 13:00 UTC = 08:00 NY -> interval 32 in NY -> inside block.
 func TestTimeBlockRule_Timezone_InsideBlock(t *testing.T) {
-	now := time.Date(2026, 1, 1, 13, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 1, 4, 13, 0, 0, 0, time.UTC)
 	blocks := []models.TimeBlock{{StartTime: 32, EndTime: 39, Category: "social"}}
 	rctx := makeCtx("social", fakeTimeBlockStore{blocks: blocks}, now, "America/New_York")
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
@@ -197,15 +197,15 @@ func TestTimeBlockRule_Timezone_InsideBlock(t *testing.T) {
 
 // Same block but now = 12:59 UTC = 07:59 NY -> interval 31 -> outside block.
 func TestTimeBlockRule_Timezone_OutsideBlock(t *testing.T) {
-	now := time.Date(2026, 1, 1, 12, 59, 0, 0, time.UTC)
+	now := time.Date(2026, 1, 4, 12, 59, 0, 0, time.UTC)
 	blocks := []models.TimeBlock{{StartTime: 32, EndTime: 39, Category: "social"}}
 	rctx := makeCtx("social", fakeTimeBlockStore{blocks: blocks}, now, "America/New_York")
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.Verdict != rule.VerdictAllow {
-		t.Fatalf("want Allow: 12:59 UTC = 07:59 NY outside [08:00,10:00], got %v", d.Verdict)
+	if d.Verdict != rule.VerdictPassThrough {
+		t.Fatalf("want PassThrough : 12:59 UTC = 07:59 NY outside [08:00,10:00], got %v", d.Verdict)
 	}
 }
 
@@ -257,7 +257,7 @@ func TestDB_TimeBlock_InsideBlock_Blocked(t *testing.T) {
 	stores := initTestDB(t)
 	profileID := seedTimeBlock(t, "UTC", "social", 32, 39)
 
-	now := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 1, 4, 9, 0, 0, 0, time.UTC)
 	rctx := dbRuleCtx(stores, profileID, "social", "UTC", now)
 
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
@@ -274,15 +274,15 @@ func TestDB_TimeBlock_BeforeBlock_Allowed(t *testing.T) {
 	stores := initTestDB(t)
 	profileID := seedTimeBlock(t, "UTC", "social", 32, 39)
 
-	now := time.Date(2026, 1, 1, 7, 59, 0, 0, time.UTC)
+	now := time.Date(2026, 1, 4, 7, 59, 0, 0, time.UTC)
 	rctx := dbRuleCtx(stores, profileID, "social", "UTC", now)
 
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.Verdict != rule.VerdictAllow {
-		t.Fatalf("want Allow, got %v (%s)", d.Verdict, d.Reason)
+	if d.Verdict != rule.VerdictPassThrough {
+		t.Fatalf("want PassThrough, got %v (%s)", d.Verdict, d.Reason)
 	}
 }
 
@@ -291,7 +291,7 @@ func TestDB_TimeBlock_Timezone_Blocked(t *testing.T) {
 	stores := initTestDB(t)
 	profileID := seedTimeBlock(t, "America/New_York", "social", 32, 39)
 
-	now := time.Date(2026, 1, 1, 13, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 1, 4, 13, 0, 0, 0, time.UTC)
 	rctx := dbRuleCtx(stores, profileID, "social", "America/New_York", now)
 
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
@@ -309,14 +309,14 @@ func TestDB_TimeBlock_NoRows_Allowed(t *testing.T) {
 	userID, _ := db.CreateUser("UTC")
 	profileID, _ := db.CreateProfile(userID, "empty")
 
-	now := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 1, 4, 9, 0, 0, 0, time.UTC)
 	rctx := dbRuleCtx(stores, profileID, "social", "UTC", now)
 
 	d, err := (&TimeBlockRule{}).Evaluate(context.Background(), rctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.Verdict != rule.VerdictAllow {
-		t.Fatalf("want Allow for profile with no blocks, got %v", d.Verdict)
+	if d.Verdict != rule.VerdictPassThrough {
+		t.Fatalf("want Pass through for profile with no blocks, got %v", d.Verdict)
 	}
 }

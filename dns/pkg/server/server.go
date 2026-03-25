@@ -111,12 +111,19 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 
 	stores := db.NewStores(db.GetDB())
 	var poolCacheStore store.Pool
-	poolCacheStore, err = store.NewValkey(c.ValkeyAddr)
+	poolCacheStore, err = store.NewValkey(ctx, c.ValkeyAddr, stores)
 	if err != nil {
 		log.Warn().Err(err).Str("valkey-addr", c.ValkeyAddr).Msg("valkey had an error, default to memory storage for pool limits")
 		poolCacheStore = store.NewMemory()
 
 	}
+	resetter := store.NewResetter(stores, poolCacheStore)
+	resetter.StartResetJob(ctx)
+	/*members, err := stores.GetAllPoolMembersWithTimezones(ctx)
+	if err != nil {
+		panic(err)
+	}
+	log.Info().Int("member-count", len(members)).Send()*/
 	ruleStores := rule.Stores{
 		Profile:   stores,
 		Whitelist: stores,
