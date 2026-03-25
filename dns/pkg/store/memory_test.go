@@ -7,9 +7,7 @@ import (
 
 var ctx = context.Background()
 
-// ---------------------------------------------------------------------------
 // PoolID
-// ---------------------------------------------------------------------------
 
 func TestMemory_PoolID_NotFound(t *testing.T) {
 	m := NewMemory()
@@ -31,9 +29,7 @@ func TestMemory_PoolID_Found(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // ExistsShared / ExistsBorrow
-// ---------------------------------------------------------------------------
 
 func TestMemory_ExistsShared_Missing(t *testing.T) {
 	m := NewMemory()
@@ -74,9 +70,7 @@ func TestMemory_ExistsBorrow_WrongProfile(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // GetRemainingShared
-// ---------------------------------------------------------------------------
 
 func TestMemory_GetRemainingShared_NotFound(t *testing.T) {
 	m := NewMemory()
@@ -98,9 +92,7 @@ func TestMemory_GetRemainingShared_ReturnsValue(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // GetRemainingBorrow
-// ---------------------------------------------------------------------------
 
 func TestMemory_GetRemainingBorrow_NotFound(t *testing.T) {
 	m := NewMemory()
@@ -122,9 +114,7 @@ func TestMemory_GetRemainingBorrow_ReturnsValue(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // DecrementRemainingShared
-// ---------------------------------------------------------------------------
 
 func TestMemory_DecrementShared_NotFound(t *testing.T) {
 	m := NewMemory()
@@ -160,9 +150,7 @@ func TestMemory_DecrementShared_MultipleDecrements(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // DecrementRemainingBorrow
-// ---------------------------------------------------------------------------
 
 func TestMemory_DecrementBorrow_NotFound(t *testing.T) {
 	m := NewMemory()
@@ -204,9 +192,7 @@ func TestMemory_DecrementBorrow_ProfileIsolation(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // ResetShared / ResetBorrow return errors (unimplemented)
-// ---------------------------------------------------------------------------
 
 func TestMemory_ResetShared_Unimplemented(t *testing.T) {
 	m := NewMemory()

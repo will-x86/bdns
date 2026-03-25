@@ -10,9 +10,7 @@ import (
 	"codeberg.org/will-x86/bdns/dns/pkg/rule"
 )
 
-// ---------------------------------------------------------------------------
 // Fake category store
-// ---------------------------------------------------------------------------
 
 type fakeCategoryStore struct {
 	blocked bool
@@ -23,9 +21,7 @@ func (f fakeCategoryStore) IsCategoryBlocked(_ context.Context, _, _ string) (bo
 	return f.blocked, f.err
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 func makeCategoryRuleCtx(category string, catStore fakeCategoryStore, resolveErr error) *rule.RuleContext {
 	return &rule.RuleContext{
@@ -42,9 +38,7 @@ func makeCategoryRuleCtx(category string, catStore fakeCategoryStore, resolveErr
 	}
 }
 
-// ---------------------------------------------------------------------------
 // CategoryBlockRule tests
-// ---------------------------------------------------------------------------
 
 func TestCategoryBlockRule_Name(t *testing.T) {
 	if (&CategoryBlockRule{}).Name() != "category_block" {

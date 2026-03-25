@@ -10,9 +10,7 @@ import (
 	"codeberg.org/will-x86/bdns/dns/pkg/rule"
 )
 
-// ---------------------------------------------------------------------------
 // Fake pool cache store
-// ---------------------------------------------------------------------------
 
 type fakePoolCache struct {
 	poolID           string
@@ -51,9 +49,7 @@ func (f *fakePoolCache) DecrementRemainingBorrow(_ context.Context, _, _ string)
 	return f.decrementErr
 }
 
-// ---------------------------------------------------------------------------
 // Fake pool DB store
-// ---------------------------------------------------------------------------
 
 type fakePoolDB struct {
 	pool            models.FriendPool
@@ -68,9 +64,7 @@ func (f *fakePoolDB) PoolCategoryBlocked(_ context.Context, _, _ string) bool {
 	return f.categoryBlocked
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 func makePoolRuleCtx(cache *fakePoolCache, db *fakePoolDB, category string) *rule.RuleContext {
 	return &rule.RuleContext{
@@ -96,9 +90,7 @@ func borrowPool() models.FriendPool {
 	return models.FriendPool{ID: "pool1", PoolMode: "borrow", TotalLimit: 100}
 }
 
-// ---------------------------------------------------------------------------
 // SharedPoolRule tests
-// ---------------------------------------------------------------------------
 
 func TestSharedPoolRule_Name(t *testing.T) {
 	if (&SharedPoolRule{}).Name() != "shared_pool_block" {
@@ -322,9 +314,7 @@ func (c *countingPoolDB) GetPool(ctx context.Context, poolID string) (models.Fri
 	return c.fakePoolDB.GetPool(ctx, poolID)
 }
 
-// ---------------------------------------------------------------------------
 // BorrowPoolRule tests
-// ---------------------------------------------------------------------------
 
 func TestBorrowPoolRule_Name(t *testing.T) {
 	if (&BorrowPoolRule{}).Name() != "borrow_pool_block" {

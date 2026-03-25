@@ -10,9 +10,7 @@ import (
 	"codeberg.org/will-x86/bdns/dns/pkg/rule"
 )
 
-// ---------------------------------------------------------------------------
 // Fake whitelist store
-// ---------------------------------------------------------------------------
 
 type fakeWhitelistStore struct {
 	permanent    bool
@@ -38,9 +36,7 @@ func makeWhitelistRuleCtx(domain string, store fakeWhitelistStore) *rule.RuleCon
 	}
 }
 
-// ---------------------------------------------------------------------------
 // PermanentWhitelistRule tests
-// ---------------------------------------------------------------------------
 
 func TestPermanentWhitelistRule_Name(t *testing.T) {
 	if (&PermanentWhitelistRule{}).Name() != "permanent_whitelist" {
@@ -90,9 +86,7 @@ func TestPermanentWhitelistRule_ReasonSet(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // TemporaryWhitelistRule tests
-// ---------------------------------------------------------------------------
 
 func TestTemporaryWhitelistRule_Name(t *testing.T) {
 	if (&TemporaryWhitelistRule{}).Name() != "temporary_whitelist" {
@@ -142,9 +136,7 @@ func TestTemporaryWhitelistRule_ReasonSet(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // Interaction: permanent whitelist short-circuits before temporary
-// ---------------------------------------------------------------------------
 
 func TestWhitelistRules_PermanentBeforeTemporaryInEngine(t *testing.T) {
 	// Engine with permanent then temporary: if permanent fires, temporary is never reached
