@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/UnnoTed/horizontal"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/UnnoTed/horizontal"
 
 	"codeberg.org/will-x86/bdns/dns/pkg/db"
 	"codeberg.org/will-x86/bdns/dns/pkg/server"
@@ -82,6 +83,9 @@ func configAndLogger() (server.ServerConfig, zerolog.Logger) {
 		}
 	}()
 	var log zerolog.Logger
+	/*log.Logger = log.Output(horizontal.ConsoleWriter{Out: os.Stderr})
+	log.Debug().Msg("hi")
+	log.Debug().Msg("hello")*/
 	zerolog.SetGlobalLevel(logLevel)
 	{
 		eKey := "ENVIRONMENT" // I really can't trust myself to spell
@@ -91,10 +95,11 @@ func configAndLogger() (server.ServerConfig, zerolog.Logger) {
 			log = zerolog.New(os.Stdout).With().Timestamp().Logger()
 		} else if os.Getenv(eKey) == "local" {
 			// local, pretty !!
-			log = log.Output(horizontal.ConsoleWriter{Out: os.Stdout})
+			log = log.Output(horizontal.ConsoleWriter{Out: os.Stdout}).Level(logLevel)
 		}
 	}
 	log.Info().Any("config", c).Msg("Starting server")
 	log.Debug().Str("log_level", logLevel.String()).Msg("log level:")
+	log.Trace().Msg("tracing is enabled")
 	return c, log
 }

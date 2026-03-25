@@ -42,3 +42,33 @@ INSERT OR IGNORE INTO user_time_blocks (profile_id, category, start_time, end_ti
 
 INSERT OR IGNORE INTO users (id, timezone) VALUES ('noblock', 'Europe/London');
 INSERT OR IGNORE INTO profiles (id, user_id, name) VALUES ('noblock', 'noblock', 'test-no-block');
+
+
+-- users for 100 on social medai pool
+INSERT OR IGNORE INTO users(id, timezone) VALUES ('user1', 'Europe/London');
+INSERT OR IGNORE INTO users(id, timezone) VALUES ('user2', 'Europe/London');
+INSERT OR IGNORE INTO users(id, timezone) VALUES ('user3', 'Europe/London');
+
+-- Friendships (bidirectional)
+INSERT OR IGNORE INTO user_friends(user_id, friend_id) VALUES ('user1', 'user2');
+INSERT OR IGNORE INTO user_friends(user_id, friend_id) VALUES ('user2', 'user1');
+INSERT OR IGNORE INTO user_friends(user_id, friend_id) VALUES ('user1', 'user3');
+INSERT OR IGNORE INTO user_friends(user_id, friend_id) VALUES ('user3', 'user1');
+INSERT OR IGNORE INTO user_friends(user_id, friend_id) VALUES ('user2', 'user3');
+INSERT OR IGNORE INTO user_friends(user_id, friend_id) VALUES ('user3', 'user2');
+
+-- One profile per user
+INSERT OR IGNORE INTO profiles(id, user_id, name) VALUES ('profile1', 'user1', 'User 1 Personal');
+INSERT OR IGNORE INTO profiles(id, user_id, name) VALUES ('profile2', 'user2', 'User 2 Personal');
+INSERT OR IGNORE INTO profiles(id, user_id, name) VALUES ('profile3', 'user3', 'User 3 Personal');
+
+-- da poiol
+INSERT OR IGNORE INTO friend_pools(id, created_by, name, pool_mode, total_limit)
+VALUES ('pool1', 'user1', 'Social Media Shared Pot', 'shared', 100);
+
+-- Add profiles in the pool
+INSERT OR IGNORE INTO friend_pool_members(pool_id, profile_id) VALUES ('pool1', 'profile1');
+INSERT OR IGNORE INTO friend_pool_members(pool_id, profile_id) VALUES ('pool1', 'profile2');
+INSERT OR IGNORE INTO friend_pool_members(pool_id, profile_id) VALUES ('pool1', 'profile3');
+
+INSERT OR IGNORE INTO friend_pool_category_blocks(pool_id, category) VALUES ('pool1', 'social');

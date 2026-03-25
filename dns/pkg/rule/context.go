@@ -25,13 +25,20 @@ type TimeBlockStore interface {
 	GetTimeBlocks(ctx context.Context, profileID, category string) ([]models.TimeBlock, error)
 }
 
-/*
-
-type FriendshipStore interface {
-	GetFriendship(ctx context.Context, userID string) (*models.Friendship, bool, error)
-	DecrementAndCheck(ctx context.Context, friendshipID, userID string, poolSize int, date string) (bool, error)
+type PoolCacheStore interface {
+	PoolID(ctx context.Context, profileID string) (string, error)
+	ExistsShared(ctx context.Context, poolID string) bool
+	ExistsBorrow(ctx context.Context, poolID, profileID string) bool
+	DecrementRemainingBorrow(ctx context.Context, poolID, profileID string) error
+	GetRemainingShared(ctx context.Context, poolID string) (int64, error)
+	DecrementRemainingShared(ctx context.Context, poolID string) error
+	GetRemainingBorrow(ctx context.Context, poolID, profileID string) (int64, error)
 }
-*/
+
+type PoolDBStore interface {
+	GetPool(ctx context.Context, poolID string) (models.FriendPool, error)
+	PoolCategoryBlocked(ctx context.Context, poolID, category string) bool
+}
 
 // CategoryResolver resolves a domain to a category (sits in rcache, injected here)
 type CategoryResolver func(ctx context.Context, domain string) (string, error)
@@ -41,8 +48,9 @@ type Stores struct {
 	Whitelist WhitelistStore
 	Category  CategoryStore
 	TimeBlock TimeBlockStore
-	//	Friendship FriendshipStore
-	Resolve CategoryResolver
+	PoolCache PoolCacheStore
+	PoolDB    PoolDBStore
+	Resolve   CategoryResolver
 }
 
 type RuleContext struct {
@@ -53,10 +61,25 @@ type RuleContext struct {
 	User      *models.User
 
 	category *string
+	pools    map[string]*models.FriendPool
 
 	Stores Stores
 }
 
+func (r *RuleContext) GetPool(ctx context.Context, poolID string) (models.FriendPool, error) {
+	if r.pools == nil {
+		r.pools = make(map[string]*models.FriendPool)
+	}
+	if p, ok := r.pools[poolID]; ok {
+		return *p, nil
+	}
+	pol, err := r.Stores.PoolDB.GetPool(ctx, poolID)
+	if err != nil {
+		return models.FriendPool{}, err
+	}
+	r.pools[poolID] = &pol
+	return pol, nil
+}
 func (r *RuleContext) GetCategory(ctx context.Context) (string, error) {
 	if r.category != nil {
 		return *r.category, nil
