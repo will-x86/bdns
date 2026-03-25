@@ -3,8 +3,9 @@ package store
 import "context"
 
 type Pool interface {
-	Exists(ctx context.Context, profileID, poolID string) bool
 	PoolID(ctx context.Context, profileID string) (string, error)
+	ExistsShared(ctx context.Context, poolID string) bool
+	ExistsBorrow(ctx context.Context, poolID, profileID string) bool
 	GetRemainingShared(ctx context.Context, poolID string) (int64, error)
 	DecrementRemainingBorrow(ctx context.Context, poolID, profileID string) error
 	DecrementRemainingShared(ctx context.Context, poolID string) error

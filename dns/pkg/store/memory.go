@@ -58,12 +58,18 @@ func (p *PoolMemory) PoolID(_ context.Context, profileID string) (string, error)
 	return v, nil
 }
 
-func (p *PoolMemory) Exists(_ context.Context, profileID, poolID string) bool {
+func (p *PoolMemory) ExistsShared(_ context.Context, poolID string) bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	_, sharedOk := p.shared[p.sharedKey(poolID)]
-	_, borrowOk := p.borrow[p.borrowKey(poolID, profileID)]
-	return sharedOk || borrowOk
+	_, ok := p.shared[p.sharedKey(poolID)]
+	return ok
+}
+
+func (p *PoolMemory) ExistsBorrow(_ context.Context, poolID, profileID string) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	_, ok := p.borrow[p.borrowKey(poolID, profileID)]
+	return ok
 }
 
 func (p *PoolMemory) GetRemainingShared(_ context.Context, poolID string) (int64, error) {

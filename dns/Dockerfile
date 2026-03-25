@@ -13,6 +13,5 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./bdns ./cmd/main/main.go
 
 
-CMD ["./bdns", "-ingest"]
 EXPOSE 853
-CMD ["./bdns", "-seed"]
+CMD ["./bdns", "-seed", "-ingest"]

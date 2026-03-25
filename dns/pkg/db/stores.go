@@ -155,7 +155,7 @@ func (s *SQLiteStores) GetAllPoolMembersWithTimezones(ctx context.Context) ([]mo
 
 	log := zerolog.Ctx(ctx).With().Str("component", "db-stores-GetAllPoolMembersWithTimezones").Logger()
 	log.Debug().Time("now", time.Now()).Msg("Getting all pool members with timezones at")
-	rows, err := db.Query(`
+	rows, err := s.db.Query(`
     SELECT 
         fpm.pool_id,
         fpm.profile_id,
@@ -186,6 +186,9 @@ func (s *SQLiteStores) GetAllPoolMembersWithTimezones(ctx context.Context) ([]mo
 			&member.Timezone,
 			&member.UserID,
 		)
+		if err != nil {
+			return []models.AllMembers{}, err
+		}
 		if member.Timezone == "" {
 			log.Fatal().Str("userid", member.UserID).Msg("no timezone for member")
 		}

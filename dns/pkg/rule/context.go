@@ -26,8 +26,9 @@ type TimeBlockStore interface {
 }
 
 type PoolCacheStore interface {
-	PoolID(ctx context.Context, profileID string) (string, error) // Returns pool_id with profile_id
-	Exists(ctx context.Context, profileID, poolID string) bool    // Sees if a pool exists with
+	PoolID(ctx context.Context, profileID string) (string, error)
+	ExistsShared(ctx context.Context, poolID string) bool
+	ExistsBorrow(ctx context.Context, poolID, profileID string) bool
 	DecrementRemainingBorrow(ctx context.Context, poolID, profileID string) error
 	GetRemainingShared(ctx context.Context, poolID string) (int64, error)
 	DecrementRemainingShared(ctx context.Context, poolID string) error
@@ -60,21 +61,24 @@ type RuleContext struct {
 	User      *models.User
 
 	category *string
-	pool     *models.FriendPool
+	pools    map[string]*models.FriendPool
 
 	Stores Stores
 }
 
 func (r *RuleContext) GetPool(ctx context.Context, poolID string) (models.FriendPool, error) {
-	if r.pool != nil {
-		return *r.pool, nil
+	if r.pools == nil {
+		r.pools = make(map[string]*models.FriendPool)
+	}
+	if p, ok := r.pools[poolID]; ok {
+		return *p, nil
 	}
 	pol, err := r.Stores.PoolDB.GetPool(ctx, poolID)
 	if err != nil {
 		return models.FriendPool{}, err
 	}
-	r.pool = &pol
-	return *r.pool, nil
+	r.pools[poolID] = &pol
+	return pol, nil
 }
 func (r *RuleContext) GetCategory(ctx context.Context) (string, error) {
 	if r.category != nil {

@@ -33,9 +33,8 @@ func (r *BorrowPoolRule) Evaluate(ctx context.Context, rctx *rule.RuleContext) (
 	log = log.With().Str("pool_id", poolID).Logger()
 	ctx = log.WithContext(ctx)
 
-	if !rctx.Stores.PoolCache.Exists(ctx, rctx.ProfileID, poolID) {
-		log.Trace().Msg("passing through as no pool in cache")
-		// no pool exists
+	if !rctx.Stores.PoolCache.ExistsBorrow(ctx, poolID, rctx.ProfileID) {
+		log.Trace().Msg("passing through as no borrow pool key in cache")
 		return rule.PassThrough(), nil
 	}
 

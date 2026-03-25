@@ -27,9 +27,8 @@ func (r *SharedPoolRule) Evaluate(ctx context.Context, rctx *rule.RuleContext) (
 	log = zerolog.Ctx(ctx).With().Str("poolID", poolID).Logger()
 	ctx = log.WithContext(ctx)
 
-	if !rctx.Stores.PoolCache.Exists(ctx, rctx.ProfileID, poolID) {
-		log.Trace().Msg("passing through as no pool in cache")
-		// no pool exists
+	if !rctx.Stores.PoolCache.ExistsShared(ctx, poolID) {
+		log.Trace().Msg("passing through as no shared pool key in cache")
 		return rule.PassThrough(), nil
 	}
 	pool, err := rctx.GetPool(ctx, poolID)

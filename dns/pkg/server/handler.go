@@ -69,7 +69,6 @@ func (h *handler) handle(ctx context.Context, requestBytes []byte, remoteAddr st
 		return
 	}
 	if profile == nil {
-		log.Printf("Profile %s not found in DB\n", h.profileID)
 		log.Warn().Str("profile-id", h.profileID).Msg("profile not found in DB")
 		if err := h.write(buildRefusedResponse(requestBytes)); err != nil {
 			log.Error().Err(err).Msg("error sending REFUSED")
