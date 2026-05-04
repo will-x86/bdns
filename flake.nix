@@ -50,6 +50,11 @@
             air
             goose
             sqlite
+            protobuf
+            grpcurl
+            protoc-gen-go
+            protoc-gen-go-grpc
+            go-task
           ];
           shellHook = ''
             alias ls=eza

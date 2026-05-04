@@ -25,7 +25,6 @@ func main() {
 	config, log := configAndLogger()
 
 	// db setup + ingest
-	//	dbLog := log.With().Str("component", "database").Logger()
 	if err := db.InitDB(log, "./app.db", "./migrations/"); err != nil {
 		log.Fatal().Err(err).Msg("failed to initalize datavase")
 	}
