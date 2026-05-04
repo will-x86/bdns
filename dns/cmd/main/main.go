@@ -10,6 +10,7 @@ import (
 	"github.com/UnnoTed/horizontal"
 
 	"codeberg.org/will-x86/bdns/dns/pkg/db"
+	"codeberg.org/will-x86/bdns/dns/pkg/proto"
 	"codeberg.org/will-x86/bdns/dns/pkg/server"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/rs/zerolog"
@@ -42,6 +43,7 @@ func main() {
 
 	ctx := context.Background()
 	ctx = log.WithContext(ctx)
+	go proto.RunServer()
 	server.RunServer(ctx, &config)
 }
 func configAndLogger() (server.ServerConfig, zerolog.Logger) {
