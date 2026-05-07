@@ -41,4 +41,3 @@ impl AuthSvc {
         Ok(inner)
     }
 }
-

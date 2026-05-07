@@ -140,6 +140,230 @@ func (s *SQLiteStores) DeleteProfile(ctx context.Context, profileID string) erro
 	return err
 }
 
+func (s *SQLiteStores) ListPermanentWhitelists(ctx context.Context, profileID string) ([]string, error) {
+	var domains []string
+	err := s.db.SelectContext(ctx, &domains,
+		`SELECT domain FROM permanent_whitelists WHERE profile_id = ?`,
+		profileID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return domains, nil
+}
+
+func (s *SQLiteStores) AddPermanentWhitelist(ctx context.Context, profileID, domain string) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO permanent_whitelists (profile_id, domain) VALUES (?, ?)`,
+		profileID, domain,
+	)
+	return err
+}
+
+func (s *SQLiteStores) RemovePermanentWhitelist(ctx context.Context, profileID, domain string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM permanent_whitelists WHERE profile_id = ? AND domain = ?`,
+		profileID, domain,
+	)
+	return err
+}
+
+type TempWhitelist struct {
+	Domain    string `db:"domain"`
+	ExpiresAt int    `db:"expires_at"`
+}
+
+func (s *SQLiteStores) ListTemporaryWhitelists(ctx context.Context, profileID string) ([]TempWhitelist, error) {
+	var whitelists []TempWhitelist
+	err := s.db.SelectContext(ctx, &whitelists,
+		`SELECT domain, expires_at FROM temporary_whitelists WHERE profile_id = ?`,
+		profileID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return whitelists, nil
+}
+
+func (s *SQLiteStores) AddTemporaryWhitelist(ctx context.Context, profileID, domain string, expiresAt int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO temporary_whitelists (profile_id, domain, expires_at) VALUES (?, ?, ?)`,
+		profileID, domain, expiresAt,
+	)
+	return err
+}
+
+func (s *SQLiteStores) RemoveTemporaryWhitelist(ctx context.Context, profileID, domain string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM temporary_whitelists WHERE profile_id = ? AND domain = ?`,
+		profileID, domain,
+	)
+	return err
+}
+
+func (s *SQLiteStores) ListBlockedCategories(ctx context.Context, profileID string) ([]string, error) {
+	var categories []string
+	err := s.db.SelectContext(ctx, &categories,
+		`SELECT category FROM user_category_blocks WHERE profile_id = ?`,
+		profileID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return categories, nil
+}
+
+func (s *SQLiteStores) BlockCategory(ctx context.Context, profileID, category string) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO user_category_blocks (profile_id, category) VALUES (?, ?)`,
+		profileID, category,
+	)
+	return err
+}
+
+func (s *SQLiteStores) UnblockCategory(ctx context.Context, profileID, category string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM user_category_blocks WHERE profile_id = ? AND category = ?`,
+		profileID, category,
+	)
+	return err
+}
+
+func (s *SQLiteStores) ListTimeBlocks(ctx context.Context, profileID string) ([]models.TimeBlock, error) {
+	var timeblocks []models.TimeBlock
+	err := s.db.SelectContext(ctx, &timeblocks,
+		`SELECT profile_id, category, start_time, end_time, day, created_at FROM user_time_blocks WHERE profile_id = ?`,
+		profileID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return timeblocks, nil
+}
+
+func (s *SQLiteStores) CreateTimeBlock(ctx context.Context, profileID, category string, startTime, endTime, day int) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO user_time_blocks (profile_id, category, start_time, end_time, day) VALUES (?, ?, ?, ?, ?)`,
+		profileID, category, startTime, endTime, day,
+	)
+	return err
+}
+
+func (s *SQLiteStores) DeleteTimeBlock(ctx context.Context, profileID, category string, startTime, endTime, day int) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM user_time_blocks WHERE profile_id = ? AND category = ? AND start_time = ? AND end_time = ? AND day = ?`,
+		profileID, category, startTime, endTime, day,
+	)
+	return err
+}
+
+func (s *SQLiteStores) DeleteTimeBlockByProfile(ctx context.Context, profileID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM user_time_blocks WHERE profile_id = ?`, profileID)
+	return err
+}
+
+func (s *SQLiteStores) ListPoolsForUser(ctx context.Context, userID string) ([]models.FriendPool, error) {
+	var pools []models.FriendPool
+	err := s.db.SelectContext(ctx, &pools,
+		`SELECT id, created_by, pool_mode, total_limit FROM friend_pools WHERE created_by = ?`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return pools, nil
+}
+
+func (s *SQLiteStores) CreatePool(ctx context.Context, userID, name, poolMode string, limit int64) (string, error) {
+	var id string
+	err := s.db.QueryRowContext(ctx,
+		`INSERT INTO friend_pools (created_by, name, pool_mode, total_limit) VALUES (?, ?, ?, ?) RETURNING id`,
+		userID, name, poolMode, limit,
+	).Scan(&id)
+	return id, err
+}
+
+func (s *SQLiteStores) DeletePool(ctx context.Context, poolID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM friend_pools WHERE id = ?`, poolID)
+	return err
+}
+
+func (s *SQLiteStores) JoinPool(ctx context.Context, poolID, profileID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO friend_pool_members (pool_id, profile_id) VALUES (?, ?)`,
+		poolID, profileID,
+	)
+	return err
+}
+
+func (s *SQLiteStores) LeavePool(ctx context.Context, poolID, profileID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM friend_pool_members WHERE pool_id = ? AND profile_id = ?`,
+		poolID, profileID,
+	)
+	return err
+}
+
+func (s *SQLiteStores) ListPoolMembers(ctx context.Context, poolID string) ([]models.FriendPoolMembers, error) {
+	var members []models.FriendPoolMembers
+	err := s.db.SelectContext(ctx, &members,
+		`SELECT pool_id, profile_id FROM friend_pool_members WHERE pool_id = ?`,
+		poolID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return members, nil
+}
+
+func (s *SQLiteStores) ListPoolCategoryBlocks(ctx context.Context, poolID string) ([]string, error) {
+	var categories []string
+	err := s.db.SelectContext(ctx, &categories,
+		`SELECT category FROM friend_pool_category_blocks WHERE pool_id = ?`,
+		poolID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return categories, nil
+}
+
+func (s *SQLiteStores) AddPoolCategoryBlock(ctx context.Context, poolID, category string) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO friend_pool_category_blocks (pool_id, category) VALUES (?, ?)`,
+		poolID, category,
+	)
+	return err
+}
+
+func (s *SQLiteStores) RemovePoolCategoryBlock(ctx context.Context, poolID, category string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM friend_pool_category_blocks WHERE pool_id = ? AND category = ?`,
+		poolID, category,
+	)
+	return err
+}
+
+func (s *SQLiteStores) GetPoolCredits(ctx context.Context, poolID string) (int64, error) {
+	var limit int64
+	err := s.db.QueryRowContext(ctx,
+		`SELECT total_limit FROM friend_pools WHERE id = ?`,
+		poolID,
+	).Scan(&limit)
+	return limit, err
+}
+
+func (s *SQLiteStores) ListCategories(ctx context.Context) ([]string, error) {
+	var categories []string
+	err := s.db.SelectContext(ctx, &categories,
+		`SELECT DISTINCT category FROM blocklist_sources`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return categories, nil
+}
+
 // Check DB if domain is categorized, if not ""
 func (s *SQLiteStores) ResolveCategory(ctx context.Context, domain string) (string, error) {
 	log := zerolog.Ctx(ctx).With().Str("component", "db-stores").Logger()

@@ -51,6 +51,10 @@ func RunServer(log zerolog.Logger) {
 	pb.RegisterUserServiceServer(s, routes.NewUserServer(stores))
 	pb.RegisterAuthServer(s, routes.NewAuthServer(stores))
 	pb.RegisterProfileServiceServer(s, routes.NewProfileServer(stores))
+	pb.RegisterWhitelistServiceServer(s, routes.NewWhitelistServer(stores))
+	pb.RegisterCategoryServiceServer(s, routes.NewCategoryServer(stores))
+	pb.RegisterTimeBlockServiceServer(s, routes.NewTimeBlockServer(stores))
+	pb.RegisterPoolServiceServer(s, routes.NewPoolServer(stores))
 
 	log.Info().Msg("gRPC server listening on :50051")
 	if err := s.Serve(lis); err != nil {
