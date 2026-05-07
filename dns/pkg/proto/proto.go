@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 
+	"codeberg.org/will-x86/bdns/dns/pkg/db"
 	pb "codeberg.org/will-x86/bdns/dns/pkg/proto/pb"
 	"codeberg.org/will-x86/bdns/dns/pkg/proto/routes"
 	"google.golang.org/grpc"
@@ -16,7 +17,10 @@ func RunServer() {
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterUserServiceServer(s, &routes.UserServer{})
+
+	stores := db.NewStores(db.GetDB())
+	pb.RegisterUserServiceServer(s, routes.NewUserServer(stores))
+	pb.RegisterAuthServer(s, routes.NewAuthServer(stores))
 
 	log.Println("gRPC server listening on :50051")
 	if err := s.Serve(lis); err != nil {

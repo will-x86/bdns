@@ -199,3 +199,37 @@ func (s *SQLiteStores) GetAllPoolMembersWithTimezones(ctx context.Context) ([]mo
 	err = rows.Err()
 	return allMembers, err
 }
+
+func (s *SQLiteStores) CreateUser(ctx context.Context, timezone string) (string, error) {
+	var id string
+	err := s.db.QueryRowContext(ctx, "INSERT INTO users (timezone) VALUES (?) RETURNING id", timezone).Scan(&id)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+}
+func (s *SQLiteStores) UserExists(ctx context.Context, userID string) (bool, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE id = ?", userID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (s *SQLiteStores) GetUser(ctx context.Context, userID string) (*models.User, error) {
+	var user models.User
+	err := s.db.GetContext(ctx, &user, "SELECT id, timezone, created_at FROM users WHERE id = ?", userID)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (s *SQLiteStores) UpdateUser(ctx context.Context, userID, timezone string) (*models.User, error) {
+	_, err := s.db.ExecContext(ctx, "UPDATE users SET timezone = ? WHERE id = ?", timezone, userID)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetUser(ctx, userID)
+}
