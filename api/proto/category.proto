@@ -1,0 +1,34 @@
+syntax = "proto3";
+option go_package = "codeberg.org/will-x86/bdns/api/pkg/proto";
+import "google/protobuf/empty.proto";
+
+package proto;
+
+service CategoryService {
+    rpc ListBlocked(ListBlockedRequest) returns (CategoryList);
+    rpc BlockCategory(BlockCategoryRequest) returns (CategoryBlock);
+    rpc UnblockCategory(UnblockCategoryRequest) returns (google.protobuf.Empty);
+}
+
+message ListBlockedRequest {
+    string profile_id = 1;
+}
+
+message BlockCategoryRequest {
+    string profile_id = 1;
+    string category = 2;
+}
+
+message UnblockCategoryRequest {
+    string profile_id = 1;
+    string category = 2;
+}
+
+message CategoryBlock {
+    string category = 1;
+}
+
+message CategoryList {
+    repeated string categories = 1;
+}
+

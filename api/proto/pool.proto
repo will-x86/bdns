@@ -1,0 +1,111 @@
+syntax = "proto3";
+option go_package = "codeberg.org/will-x86/bdns/api/pkg/proto";
+import "google/protobuf/empty.proto";
+
+package proto;
+
+service PoolService {
+    rpc ListPools(ListPoolsRequest) returns (PoolList);
+    rpc CreatePool(CreatePoolRequest) returns (FriendPool);
+    rpc GetPool(GetPoolRequest) returns (FriendPool);
+    rpc DeletePool(DeletePoolRequest) returns (google.protobuf.Empty);
+    rpc JoinPool(JoinPoolRequest) returns (google.protobuf.Empty);
+    rpc LeavePool(LeavePoolRequest) returns (google.protobuf.Empty);
+    rpc ListMembers(ListMembersRequest) returns (PoolMemberList);
+    rpc ListBlocks(ListPoolBlocksRequest) returns (PoolBlockList);
+    rpc BlockCategory(BlockPoolCategoryRequest) returns (google.protobuf.Empty);
+    rpc UnblockCategory(UnblockPoolCategoryRequest) returns (google.protobuf.Empty);
+    rpc GetCredits(GetCreditsRequest) returns (CreditsResponse);
+}
+
+message ListPoolsRequest {
+    string user_id = 1;
+}
+
+message CreatePoolRequest {
+    string user_id = 1;
+    string name = 2;
+    string pool_mode = 3;
+    int64 total_limit = 4;
+}
+
+message GetPoolRequest {
+    string pool_id = 1;
+}
+
+message DeletePoolRequest {
+    string pool_id = 1;
+    string user_id = 2;
+}
+
+message JoinPoolRequest {
+    string pool_id = 1;
+    string profile_id = 2;
+}
+
+message LeavePoolRequest {
+    string pool_id = 1;
+    string profile_id = 2;
+}
+
+message ListMembersRequest {
+    string pool_id = 1;
+}
+
+message ListPoolBlocksRequest {
+    string pool_id = 1;
+}
+
+message BlockPoolCategoryRequest {
+    string pool_id = 1;
+    string category = 2;
+}
+
+message UnblockPoolCategoryRequest {
+    string pool_id = 1;
+    string category = 2;
+}
+
+message GetCreditsRequest {
+    string pool_id = 1;
+    string profile_id = 2;
+}
+
+message FriendPool {
+    string id = 1;
+    string created_by = 2;
+    string name = 3;
+    string pool_mode = 4;
+    int64 total_limit = 5;
+    int64 created_at = 6;
+}
+
+message PoolList {
+    repeated FriendPool pools = 1;
+}
+
+message PoolMember {
+    string pool_id = 1;
+    string profile_id = 2;
+    string profile_name = 3;
+    int64 joined_at = 4;
+}
+
+message PoolMemberList {
+    repeated PoolMember members = 1;
+}
+
+message PoolBlock {
+    string pool_id = 1;
+    string category = 2;
+}
+
+message PoolBlockList {
+    repeated PoolBlock blocks = 1;
+}
+
+message CreditsResponse {
+    int64 remaining = 1;
+    int64 total = 2;
+}
+

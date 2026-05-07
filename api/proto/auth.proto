@@ -1,0 +1,27 @@
+syntax = "proto3";
+option go_package = "codeberg.org/will-x86/bdns/api/pkg/proto";
+
+package proto;
+
+service Auth {
+    rpc SignUp(SignUpRequest) returns (SignUpResponse);
+    rpc Login(LoginRequest) returns (LoginResponse);
+}
+
+message SignUpRequest {
+    string timezone = 1;
+}
+
+message SignUpResponse {
+    string user_id = 1;
+    int64 created_at = 2;
+}
+
+message LoginRequest {
+    string user_id = 1;
+}
+
+message LoginResponse {
+    string user_id = 1;
+    bool success = 2;
+}

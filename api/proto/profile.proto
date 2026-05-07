@@ -1,0 +1,47 @@
+syntax = "proto3";
+option go_package = "codeberg.org/will-x86/bdns/api/pkg/proto";
+import "google/protobuf/empty.proto";
+
+package proto;
+
+service ProfileService {
+    rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse);
+    rpc CreateProfile(CreateProfileRequest) returns (Profile);
+    rpc GetProfile(GetProfileRequest) returns (Profile);
+    rpc UpdateProfile(UpdateProfileRequest) returns (Profile);
+    rpc DeleteProfile(DeleteProfileRequest) returns (google.protobuf.Empty);
+}
+
+message ListProfilesRequest {
+    string user_id = 1;
+}
+
+message ListProfilesResponse {
+    repeated Profile profiles = 1;
+}
+
+message CreateProfileRequest {
+    string user_id = 1;
+    string name = 2;
+}
+
+message GetProfileRequest {
+    string profile_id = 1;
+}
+
+message UpdateProfileRequest {
+    string profile_id = 1;
+    string name = 2;
+}
+
+message DeleteProfileRequest {
+    string profile_id = 1;
+}
+
+message Profile {
+    string id = 1;
+    string user_id = 2;
+    string name = 3;
+    int64 created_at = 4;
+}
+

@@ -1,0 +1,42 @@
+syntax = "proto3";
+option go_package = "codeberg.org/will-x86/bdns/api/pkg/proto";
+import "google/protobuf/empty.proto";
+
+package proto;
+
+service TimeBlockService {
+    rpc List(ListTimeBlocksRequest) returns (TimeBlockList);
+    rpc Create(CreateTimeBlockRequest) returns (TimeBlock);
+    rpc Delete(DeleteTimeBlockRequest) returns (google.protobuf.Empty);
+}
+
+message ListTimeBlocksRequest {
+    string profile_id = 1;
+}
+
+message CreateTimeBlockRequest {
+    string profile_id = 1;
+    string category = 2;
+    int32 start_time = 3;
+    int32 end_time = 4;
+    int32 day = 5;
+}
+
+message DeleteTimeBlockRequest {
+    string block_id = 1;
+}
+
+message TimeBlock {
+    string id = 1;
+    string profile_id = 2;
+    string category = 3;
+    int32 start_time = 4;
+    int32 end_time = 5;
+    int32 day = 6;
+    int64 created_at = 7;
+}
+
+message TimeBlockList {
+    repeated TimeBlock blocks = 1;
+}
+

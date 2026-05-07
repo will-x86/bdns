@@ -1,0 +1,61 @@
+syntax = "proto3";
+option go_package = "codeberg.org/will-x86/bdns/api/pkg/proto";
+import "google/protobuf/empty.proto";
+
+package proto;
+
+service WhitelistService {
+    rpc ListPermanent(ListPermanentRequest) returns (WhitelistDomains);
+    rpc AddPermanent(AddPermanentRequest) returns (WhitelistDomain);
+    rpc RemovePermanent(RemovePermanentRequest) returns (google.protobuf.Empty);
+    rpc ListTemporary(ListTemporaryRequest) returns (WhitelistDomainsTemp);
+    rpc AddTemporary(AddTemporaryRequest) returns (WhitelistDomainTemp);
+    rpc RemoveTemporary(RemoveTemporaryRequest) returns (google.protobuf.Empty);
+}
+
+message ListPermanentRequest {
+    string profile_id = 1;
+}
+
+message AddPermanentRequest {
+    string profile_id = 1;
+    string domain = 2;
+}
+
+message RemovePermanentRequest {
+    string profile_id = 1;
+    string domain = 2;
+}
+
+message ListTemporaryRequest {
+    string profile_id = 1;
+}
+
+message AddTemporaryRequest {
+    string profile_id = 1;
+    string domain = 2;
+    int64 expires_at = 3;
+}
+
+message RemoveTemporaryRequest {
+    string profile_id = 1;
+    string domain = 2;
+}
+
+message WhitelistDomain {
+    string domain = 1;
+}
+
+message WhitelistDomains {
+    repeated string domains = 1;
+}
+
+message WhitelistDomainTemp {
+    string domain = 1;
+    int64 expires_at = 2;
+}
+
+message WhitelistDomainsTemp {
+    repeated WhitelistDomainTemp entries = 1;
+}
+
