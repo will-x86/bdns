@@ -1,30 +1,25 @@
 package proto
 
 import (
-	"context"
 	"log"
-	"time"
+	"net"
 
 	pb "codeberg.org/will-x86/bdns/dns/pkg/proto/pb"
+	"codeberg.org/will-x86/bdns/dns/pkg/proto/routes"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func RunServer() {
-	addr := "localhost:50051"
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
-	defer conn.Close()
-	c := pb.NewGreeterClient(conn)
 
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	r, err := c.SayHello(ctx, &pb.HelloRequest{Name: "hello"})
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+	s := grpc.NewServer()
+	pb.RegisterUserServiceServer(s, &routes.UserServer{})
+
+	log.Println("gRPC server listening on :50051")
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
 	}
-	log.Printf("Greeting: %s", r.GetMessage())
 }
