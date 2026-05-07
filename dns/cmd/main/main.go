@@ -43,7 +43,7 @@ func main() {
 
 	ctx := context.Background()
 	ctx = log.WithContext(ctx)
-	go proto.RunServer()
+	go proto.RunServer(log)
 	server.RunServer(ctx, &config)
 }
 func configAndLogger() (server.ServerConfig, zerolog.Logger) {

@@ -28,6 +28,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         user.id, user.timezone, user.created_at
     );
 
+    let mut profile_svc = proto::ProfileSvc::new("http://[::1]:50051".to_string()).await?;
+
+    let profile = profile_svc
+        .create_profile(user.id.clone(), "laptop".to_string())
+        .await?;
+    println!(
+        "Created profile: id={}, user_id={}, name={}",
+        profile.id, profile.user_id, profile.name
+    );
+
+    let profiles = profile_svc.list_profiles(user.id.clone()).await?;
+    println!("Listed {} profiles", profiles.len());
+
+    let profile = profile_svc
+        .update_profile(profile.id.clone(), "desktop".to_string())
+        .await?;
+    println!(
+        "Updated profile: id={}, name={}",
+        profile.id, profile.name
+    );
+
+    let profile = profile_svc.get_profile(profile.id.clone()).await?;
+    println!(
+        "Got profile: id={}, name={}",
+        profile.id, profile.name
+    );
+
+    profile_svc.delete_profile(profile.id.clone()).await?;
+    println!("Deleted profile: id={}", profile.id);
+
     Ok(())
 }
 

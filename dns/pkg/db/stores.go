@@ -93,6 +93,53 @@ func (s *SQLiteStores) GetProfileWithUser(ctx context.Context, profileID string)
 	return &profile, &user, nil
 }
 
+func (s *SQLiteStores) ListProfiles(ctx context.Context, userID string) ([]models.Profile, error) {
+	var profiles []models.Profile
+	err := s.db.SelectContext(ctx, &profiles,
+		`SELECT id, user_id, name, created_at FROM profiles WHERE user_id = ?`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return profiles, nil
+}
+
+func (s *SQLiteStores) GetProfile(ctx context.Context, profileID string) (*models.Profile, error) {
+	var profile models.Profile
+	err := s.db.GetContext(ctx, &profile,
+		`SELECT id, user_id, name, created_at FROM profiles WHERE id = ?`,
+		profileID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &profile, nil
+}
+
+func (s *SQLiteStores) UpdateProfile(ctx context.Context, profileID, name string) (*models.Profile, error) {
+	var profile models.Profile
+	err := s.db.GetContext(ctx, &profile,
+		`UPDATE profiles SET name = ? WHERE id = ? RETURNING id, user_id, name, created_at`,
+		name, profileID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &profile, nil
+}
+
+func (s *SQLiteStores) DeleteProfile(ctx context.Context, profileID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM profiles WHERE id = ?`, profileID)
+	return err
+}
+
 // Check DB if domain is categorized, if not ""
 func (s *SQLiteStores) ResolveCategory(ctx context.Context, domain string) (string, error) {
 	log := zerolog.Ctx(ctx).With().Str("component", "db-stores").Logger()
