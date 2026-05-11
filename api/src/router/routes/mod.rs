@@ -3,3 +3,5 @@ pub mod category;
 pub mod pool;
 pub mod profile;
 pub mod timeblock;
+pub mod user;
+pub mod whitelist;
