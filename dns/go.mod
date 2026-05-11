@@ -5,12 +5,14 @@ go 1.25.5
 require (
 	codeberg.org/miekg/dns v0.6.67
 	github.com/UnnoTed/horizontal v0.0.0-20220811200655-cbe810c8df9b
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/rs/zerolog v1.34.0
 	github.com/testcontainers/testcontainers-go/modules/valkey v0.40.0
 	github.com/valkey-io/valkey-go v1.0.72
+	google.golang.org/genproto/googleapis/api v0.0.0-20260209200024-4cfbd4190f57
 	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
 	modernc.org/sqlite v1.46.1
@@ -40,7 +42,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/lufia/plan9stats v0.0.0-20240513124658-fba389f38bae // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
