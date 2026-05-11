@@ -1,7 +1,49 @@
 mod proto;
+mod router;
+
+use anyhow::Result;
+use tower_http::trace::{self, TraceLayer};
+use tracing::Level;
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
+
+use crate::{
+    proto::{AuthSvc, CategorySvc, PoolSvc, ProfileSvc, TimeBlockSvc, UserSvc, WhitelistSvc},
+    router::{AppError, AppState, router::app},
+};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), AppError> {
+    tracing_subscriber::registry()
+        .with(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "my_app=debug,tower_http=debug,axum=trace".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+    let addr = "http://[::1]:50051".to_string();
+    let state = AppState {
+        auth_svc: AuthSvc::new(addr.clone()).await?,
+        category_svc: CategorySvc::new(addr.clone()).await?,
+        pool_svc: PoolSvc::new(addr.clone()).await?,
+        profile_svc: ProfileSvc::new(addr.clone()).await?,
+        timeblock_svc: TimeBlockSvc::new(addr.clone()).await?,
+        user_svc: UserSvc::new(addr.clone()).await?,
+        whitelist_svc: WhitelistSvc::new(addr.clone()).await?,
+    };
+    let app = app(state).layer(
+        TraceLayer::new_for_http()
+            .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+            .on_response(trace::DefaultOnResponse::new().level(Level::INFO))
+            .on_failure(trace::DefaultOnFailure::new().level(Level::ERROR)),
+    );
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+    tracing::info!("listening on {}", listener.local_addr()?);
+    axum::serve(listener, app).await?;
+
+    Ok(())
+
+    /*
     let mut auth_svc = proto::AuthSvc::new("http://[::1]:50051".to_string()).await?;
 
     let user = auth_svc.sign_up("Europe/London".to_string()).await?;
@@ -137,5 +179,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     println!("Deleted pool: {}", pool.id);
 
+
     Ok(())
+        */
 }

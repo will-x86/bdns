@@ -1,0 +1,19 @@
+version: '3'
+
+tasks:
+  proto:
+    cmds:
+      - buf generate
+  valkey:
+    cmds:
+      - cd dns
+      - docker compose up -d
+  ui:
+    cmds:
+      - cd ui
+      - npm run start 
+  dns:
+    cmds:
+      - cd dns 
+      - air
+       

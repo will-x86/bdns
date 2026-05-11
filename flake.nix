@@ -55,6 +55,7 @@
             protoc-gen-go
             protoc-gen-go-grpc
             go-task
+            buf
           ];
           shellHook = ''
             alias ls=eza

@@ -1,0 +1,18 @@
+version: v2
+inputs:
+  - directory: api/proto
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: dns/pkg/proto/pb
+    opt:
+      - paths=source_relative
+
+  - remote: buf.build/grpc/go
+    out: dns/pkg/proto/pb
+    opt:
+      - paths=source_relative
+
+  - remote: buf.build/bufbuild/es
+    out: ui/src/lib/gen
+    opt:
+      - target=ts

@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "codeberg.org/will-x86/bdns/api/pkg/proto";
+option go_package = "codeberg.org/will-x86/bdns/api/pkg/proto/pb";
 import "google/protobuf/empty.proto";
 
 package proto;

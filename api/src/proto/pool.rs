@@ -4,22 +4,21 @@ use crate::proto::proto::{
     GetCreditsRequest, GetPoolRequest, JoinPoolRequest, LeavePoolRequest, ListMembersRequest,
     ListPoolBlocksRequest, ListPoolsRequest, PoolBlock, PoolMember, UnblockPoolCategoryRequest,
 };
+use crate::router::AppError;
 use tonic::transport::Channel;
 
+#[derive(Clone)]
 pub struct PoolSvc {
     client: PoolServiceClient<Channel>,
 }
 
 impl PoolSvc {
-    pub async fn new(addr: String) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new(addr: String) -> Result<Self, AppError> {
         let client = PoolServiceClient::connect(addr).await?;
         Ok(Self { client })
     }
 
-    pub async fn list_pools(
-        &mut self,
-        user_id: String,
-    ) -> Result<Vec<FriendPool>, Box<dyn std::error::Error>> {
+    pub async fn list_pools(&mut self, user_id: String) -> Result<Vec<FriendPool>, AppError> {
         let request = ListPoolsRequest { user_id };
         let response = self.client.list_pools(request).await?;
         Ok(response.into_inner().pools)
@@ -31,7 +30,7 @@ impl PoolSvc {
         name: String,
         pool_mode: String,
         total_limit: i64,
-    ) -> Result<FriendPool, Box<dyn std::error::Error>> {
+    ) -> Result<FriendPool, AppError> {
         let request = CreatePoolRequest {
             user_id,
             name,
@@ -42,30 +41,19 @@ impl PoolSvc {
         Ok(response.into_inner())
     }
 
-    pub async fn get_pool(
-        &mut self,
-        pool_id: String,
-    ) -> Result<FriendPool, Box<dyn std::error::Error>> {
+    pub async fn get_pool(&mut self, pool_id: String) -> Result<FriendPool, AppError> {
         let request = GetPoolRequest { pool_id };
         let response = self.client.get_pool(request).await?;
         Ok(response.into_inner())
     }
 
-    pub async fn delete_pool(
-        &mut self,
-        pool_id: String,
-        user_id: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn delete_pool(&mut self, pool_id: String, user_id: String) -> Result<(), AppError> {
         let request = DeletePoolRequest { pool_id, user_id };
         let _response = self.client.delete_pool(request).await?;
         Ok(())
     }
 
-    pub async fn join_pool(
-        &mut self,
-        pool_id: String,
-        profile_id: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn join_pool(&mut self, pool_id: String, profile_id: String) -> Result<(), AppError> {
         let request = JoinPoolRequest {
             pool_id,
             profile_id,
@@ -78,7 +66,7 @@ impl PoolSvc {
         &mut self,
         pool_id: String,
         profile_id: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), AppError> {
         let request = LeavePoolRequest {
             pool_id,
             profile_id,
@@ -87,19 +75,13 @@ impl PoolSvc {
         Ok(())
     }
 
-    pub async fn list_members(
-        &mut self,
-        pool_id: String,
-    ) -> Result<Vec<PoolMember>, Box<dyn std::error::Error>> {
+    pub async fn list_members(&mut self, pool_id: String) -> Result<Vec<PoolMember>, AppError> {
         let request = ListMembersRequest { pool_id };
         let response = self.client.list_members(request).await?;
         Ok(response.into_inner().members)
     }
 
-    pub async fn list_blocks(
-        &mut self,
-        pool_id: String,
-    ) -> Result<Vec<PoolBlock>, Box<dyn std::error::Error>> {
+    pub async fn list_blocks(&mut self, pool_id: String) -> Result<Vec<PoolBlock>, AppError> {
         let request = ListPoolBlocksRequest { pool_id };
         let response = self.client.list_blocks(request).await?;
         Ok(response.into_inner().blocks)
@@ -109,7 +91,7 @@ impl PoolSvc {
         &mut self,
         pool_id: String,
         category: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), AppError> {
         let request = BlockPoolCategoryRequest { pool_id, category };
         let _response = self.client.block_category(request).await?;
         Ok(())
@@ -119,7 +101,7 @@ impl PoolSvc {
         &mut self,
         pool_id: String,
         category: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), AppError> {
         let request = UnblockPoolCategoryRequest { pool_id, category };
         let _response = self.client.unblock_category(request).await?;
         Ok(())
@@ -129,7 +111,7 @@ impl PoolSvc {
         &mut self,
         pool_id: String,
         profile_id: String,
-    ) -> Result<CreditsResponse, Box<dyn std::error::Error>> {
+    ) -> Result<CreditsResponse, AppError> {
         let request = GetCreditsRequest {
             pool_id,
             profile_id,
@@ -138,4 +120,3 @@ impl PoolSvc {
         Ok(response.into_inner())
     }
 }
-

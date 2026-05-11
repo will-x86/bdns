@@ -2,35 +2,34 @@ use crate::proto::proto::time_block_service_client::TimeBlockServiceClient;
 use crate::proto::proto::{
     CreateTimeBlockRequest, DeleteTimeBlockRequest, ListTimeBlocksRequest, TimeBlock,
 };
+use crate::router::AppError;
 use tonic::transport::Channel;
 
+#[derive(Clone)]
 pub struct TimeBlockSvc {
     client: TimeBlockServiceClient<Channel>,
 }
 
 impl TimeBlockSvc {
-    pub async fn new(addr: String) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new(addr: String) -> Result<Self, AppError> {
         let client = TimeBlockServiceClient::connect(addr).await?;
         Ok(Self { client })
     }
 
-    pub async fn list(
-        &mut self,
-        profile_id: String,
-    ) -> Result<Vec<TimeBlock>, Box<dyn std::error::Error>> {
+    pub async fn list(self, profile_id: String) -> Result<Vec<TimeBlock>, AppError> {
         let request = ListTimeBlocksRequest { profile_id };
-        let response = self.client.list(request).await?;
+        let response = self.client.clone().list(request).await?;
         Ok(response.into_inner().blocks)
     }
 
     pub async fn create(
-        &mut self,
+        self,
         profile_id: String,
         category: String,
         start_time: i32,
         end_time: i32,
         day: i32,
-    ) -> Result<TimeBlock, Box<dyn std::error::Error>> {
+    ) -> Result<TimeBlock, AppError> {
         let request = CreateTimeBlockRequest {
             profile_id,
             category,
@@ -38,14 +37,13 @@ impl TimeBlockSvc {
             end_time,
             day,
         };
-        let response = self.client.create(request).await?;
+        let response = self.client.clone().create(request).await?;
         Ok(response.into_inner())
     }
 
-    pub async fn delete(&mut self, block_id: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn delete(self, block_id: String) -> Result<(), AppError> {
         let request = DeleteTimeBlockRequest { block_id };
-        let _response = self.client.delete(request).await?;
+        let _response = self.client.clone().delete(request).await?;
         Ok(())
     }
 }
-
