@@ -44,7 +44,7 @@
 		</div>
 		<div class="navbar-center hidden lg:flex">
 			<ul class="menu menu-horizontal px-1">
-				<li><a href={resolve('/')}>What is bDNS?</a></li>
+				<li><a href={resolve('/what')}>What is bDNS?</a></li>
 				<li>
 					<details>
 						<summary>How to Setup</summary>
@@ -61,7 +61,7 @@
 			<a class="btn" href={resolve('/user/login')}>Login/Register</a>
 		</div>
 	</div>
-	<main class="grow overflow-hidden">
+	<main class="grow overflow-auto">
 		{@render children()}
 	</main>
 </div>
