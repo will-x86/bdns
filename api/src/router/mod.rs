@@ -7,6 +7,7 @@ use crate::proto::{
     AuthSvc, CategorySvc, PoolSvc, ProfileSvc, TimeBlockSvc, UserSvc, WhitelistSvc,
 };
 
+pub mod macros;
 pub mod router;
 pub mod routes;
 

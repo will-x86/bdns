@@ -1,5 +1,5 @@
 use crate::{
-    proto::proto::{LoginResponse, SignUpResponse},
+    proto::proto::{LoginRequest, LoginResponse, SignUpRequest, SignUpResponse},
     router::AppError,
 };
 
@@ -16,19 +16,14 @@ impl AuthSvc {
         let client = AuthClient::connect(addr).await?;
         Ok(Self { client })
     }
-    pub async fn sign_up(&self, timezone: String) -> Result<SignUpResponse, AppError> {
-        use super::proto::SignUpRequest;
-        let request = SignUpRequest { timezone };
-        let response = self.client.clone().sign_up(request).await?;
-        let inner = response.into_inner();
-        Ok(inner)
+
+    pub async fn sign_up(&self, req: SignUpRequest) -> Result<SignUpResponse, AppError> {
+        let response = self.client.clone().sign_up(req).await?;
+        Ok(response.into_inner())
     }
 
-    pub async fn login(&self, user_id: String) -> Result<LoginResponse, AppError> {
-        use super::proto::LoginRequest;
-        let request = LoginRequest { user_id };
-        let response = self.client.clone().login(request).await?;
-        let inner = response.into_inner();
-        Ok(inner)
+    pub async fn login(&self, req: LoginRequest) -> Result<LoginResponse, AppError> {
+        let response = self.client.clone().login(req).await?;
+        Ok(response.into_inner())
     }
 }

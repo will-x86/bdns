@@ -1,4 +1,7 @@
-use crate::{proto::proto::User, router::AppError};
+use crate::{
+    proto::proto::{GetUserRequest, UpdateUserRequest, User},
+    router::AppError,
+};
 use tonic::transport::Channel;
 
 use super::proto::user_service_client::UserServiceClient;
@@ -14,24 +17,13 @@ impl UserSvc {
         Ok(Self { client })
     }
 
-    pub async fn get_user(self, user_id: String) -> Result<User, AppError> {
-        use super::proto::GetUserRequest;
-
-        let request = GetUserRequest { user_id };
-
-        let response = self.client.clone().get_user(request).await?;
-        let inner = response.into_inner();
-
-        Ok(inner)
+    pub async fn get_user(&self, req: GetUserRequest) -> Result<User, AppError> {
+        let response = self.client.clone().get_user(req).await?;
+        Ok(response.into_inner())
     }
 
-    pub async fn update_user(self, user_id: String, timezone: String) -> Result<User, AppError> {
-        use super::proto::UpdateUserRequest;
-
-        let request = UpdateUserRequest { user_id, timezone };
-
-        let response = self.client.clone().update_user(request).await?;
-        let inner = response.into_inner();
-        Ok(inner)
+    pub async fn update_user(&self, req: UpdateUserRequest) -> Result<User, AppError> {
+        let response = self.client.clone().update_user(req).await?;
+        Ok(response.into_inner())
     }
 }

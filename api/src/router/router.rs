@@ -6,11 +6,12 @@ use crate::router::{
         auth::{login, sign_up},
         category::{block_category, list_blocked, unblock_category},
         pool::{
-            create_pool, delete_pool, get_credits, get_pool, join_pool, leave_pool, list_blocks,
-            list_members, list_pools, pool_block_category, pool_unblock_category,
+            block_category as pool_block_category, create_pool, delete_pool, get_credits,
+            get_pool, join_pool, leave_pool, list_blocks, list_members, list_pools,
+            unblock_category as pool_unblock_category,
         },
         profile::{create_profile, delete_profile, get_profile, list_profiles, update_profile},
-        timeblock::{create_timeblock, delete_timeblock, list_timeblocks},
+        timeblock::{create, delete, list},
         user::{get_user, update_user},
         whitelist::{
             add_permanent, add_temporary, list_permanent, list_temporary, remove_permanent,
@@ -46,9 +47,9 @@ pub fn app(state: AppState) -> Router {
         .route("/update", post(update_profile))
         .route("/delete", post(delete_profile));
     let timeblock_router = Router::new()
-        .route("/list", post(list_timeblocks))
-        .route("/create", post(create_timeblock))
-        .route("/delete", post(delete_timeblock));
+        .route("/list", post(list))
+        .route("/create", post(create))
+        .route("/delete", post(delete));
     let user_router = Router::new()
         .route("/get", post(get_user))
         .route("/update", post(update_user));
