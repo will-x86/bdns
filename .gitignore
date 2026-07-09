@@ -7,3 +7,4 @@ data
 *.db
 *.env
 sample-query-data
+coverage.out
