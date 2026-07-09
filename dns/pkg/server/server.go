@@ -147,7 +147,7 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 	}
 	engine := proxy.BuildEngine(ruleStores)
 
-	upstream := proxy.NewTLSClient("1.1.1.1", 853, "cloudflare-dns.com")
+	upstream := proxy.NewDoHClient("https://cloudflare-dns.com/dns-query")
 	log.Info().Int("port", c.Port).Msg("listening...")
 
 	for {

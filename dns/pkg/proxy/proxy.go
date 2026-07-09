@@ -1,118 +1,68 @@
 package proxy
 
 import (
-	"crypto/tls"
-	"encoding/binary"
+	"bytes"
 	"fmt"
 	"io"
-	"net"
-	"sync"
+	"net/http"
+	"time"
 )
 
-const poolSize = 8
-
-type conn struct {
-	c *tls.Conn
-}
-
-type pool struct {
-	mu    sync.Mutex
-	conns []*conn
-	cfg   *tls.Config
-	addr  string
-}
-
-func newPool(addr string, cfg *tls.Config) *pool {
-	return &pool{addr: addr, cfg: cfg}
-}
-
-func (p *pool) get() (*conn, error) {
-	p.mu.Lock()
-	if n := len(p.conns); n > 0 {
-		c := p.conns[n-1]
-		p.conns = p.conns[:n-1]
-		p.mu.Unlock()
-		return c, nil
-	}
-	p.mu.Unlock()
-	return p.dial()
-}
-
-func (p *pool) put(c *conn) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if len(p.conns) >= poolSize {
-		c.c.Close()
-		return
-	}
-	p.conns = append(p.conns, c)
-}
-
-func (p *pool) discard(c *conn) {
-	c.c.Close()
-}
-
-func (p *pool) dial() (*conn, error) {
-	c, err := tls.Dial("tcp", p.addr, p.cfg)
-	if err != nil {
-		return nil, fmt.Errorf("dial tls: %w", err)
-	}
-	return &conn{c: c}, nil
-}
-
 type Client struct {
-	pool *pool
+	endpoint string
+	http     *http.Client
 }
 
-func NewTLSClient(address string, port int, serverName string) *Client {
-	ip := net.ParseIP(address)
-	var addr string
-	if ip != nil && ip.To4() == nil && ip.To16() != nil {
-		addr = fmt.Sprintf("[%s]:%d", address, port)
-	} else {
-		addr = fmt.Sprintf("%s:%d", address, port)
+func NewDoHClient(endpoint string) *Client {
+	return &Client{
+		endpoint: endpoint,
+		http: &http.Client{
+			Timeout: 5 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 100,
+				IdleConnTimeout:     90 * time.Second,
+				ForceAttemptHTTP2:   true,
+			},
+		},
 	}
-	cfg := &tls.Config{ServerName: serverName}
-	return &Client{pool: newPool(addr, cfg)}
 }
 
+// SendQuery forwards a raw DNS query to the DoH endpoint (RFC 8484) and returns
+// the raw DNS response. It retries once so a stale keep-alive connection can't
+// fail an otherwise-healthy query.
 func (c *Client) SendQuery(query []byte) ([]byte, error) {
-	for range 2 {
-		cn, err := c.pool.get()
-		if err != nil {
-			return nil, err
+	var lastErr error
+	for attempt := 0; attempt < 2; attempt++ {
+		resp, err := c.exchange(query)
+		if err == nil {
+			return resp, nil
 		}
-
-		resp, err := sendOn(cn.c, query)
-		if err != nil {
-			c.pool.discard(cn)
-			continue
-		}
-
-		c.pool.put(cn)
-		return resp, nil
+		lastErr = err
 	}
-	return nil, fmt.Errorf("upstream query failed after retry")
+	return nil, fmt.Errorf("doh query failed: %w", lastErr)
 }
 
-func sendOn(c *tls.Conn, query []byte) ([]byte, error) {
-	prefix := make([]byte, 2)
-	binary.BigEndian.PutUint16(prefix, uint16(len(query)))
-	if _, err := c.Write(append(prefix, query...)); err != nil {
-		return nil, fmt.Errorf("write: %w", err)
+func (c *Client) exchange(query []byte) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodPost, c.endpoint, bytes.NewReader(query))
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
 	}
+	req.Header.Set("Content-Type", "application/dns-message")
+	req.Header.Set("Accept", "application/dns-message")
 
-	var respLen uint16
-	if err := binary.Read(c, binary.BigEndian, &respLen); err != nil {
-		return nil, fmt.Errorf("read length: %w", err)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
 	}
-	resp := make([]byte, respLen)
-	if _, err := io.ReadFull(c, resp); err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
-	}
+	defer resp.Body.Close()
 
-	if len(resp) < 2 || resp[0] != query[0] || resp[1] != query[1] {
-		return nil, fmt.Errorf("response ID mismatch")
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 65535))
+	if err != nil {
+		return nil, err
 	}
-	return resp, nil
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status %d", resp.StatusCode)
+	}
+	return body, nil
 }
