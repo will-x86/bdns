@@ -2,8 +2,8 @@ services:
   valkey:
     container_name: valkey
     image: valkey/valkey:9.0.3
-    ports:
-      - 6379:6379
+    #ports:
+      #- 6379:6379
     volumes:
       - ./valkey/data:/data
       - ./valkey/conf/valkey.conf:/usr/local/etc/valkey/valkey.conf

@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"codeberg.org/will-x86/bdns/dns/pkg/parser"
-	"codeberg.org/will-x86/bdns/dns/pkg/rcache"
-	"codeberg.org/will-x86/bdns/dns/pkg/rule"
 	"github.com/rs/zerolog"
+	"github.com/will-x86/bdns/dns/pkg/parser"
+	"github.com/will-x86/bdns/dns/pkg/rcache"
+	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
 type handler struct {

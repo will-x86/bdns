@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"codeberg.org/will-x86/bdns/dns/pkg/db"
-	"codeberg.org/will-x86/bdns/dns/pkg/db/models"
 	"github.com/rs/zerolog"
 	"github.com/valkey-io/valkey-go"
+	"github.com/will-x86/bdns/dns/pkg/db"
+	"github.com/will-x86/bdns/dns/pkg/db/models"
 )
 
 type PoolValkeyStore struct {

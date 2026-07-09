@@ -9,10 +9,10 @@ import (
 
 	"github.com/UnnoTed/horizontal"
 
-	"codeberg.org/will-x86/bdns/dns/pkg/db"
-	"codeberg.org/will-x86/bdns/dns/pkg/server"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/rs/zerolog"
+	"github.com/will-x86/bdns/dns/pkg/db"
+	"github.com/will-x86/bdns/dns/pkg/server"
 )
 
 func main() {
@@ -45,11 +45,24 @@ func main() {
 	ctx = log.WithContext(ctx)
 	server.RunServer(ctx, &config)
 }
+
+// apiAddr is API_ADDR, else ":"+API_PORT, else "" (API disabled).
+func apiAddr() string {
+	if addr := os.Getenv("API_ADDR"); addr != "" {
+		return addr
+	}
+	if port := os.Getenv("API_PORT"); port != "" {
+		return ":" + port
+	}
+	return ""
+}
+
 func configAndLogger() (server.ServerConfig, zerolog.Logger) {
 	c := server.ServerConfig{
 		PrivateKey: os.Getenv("KEY_PATH"),
 		SignedKey:  os.Getenv("CRT_PATH"),
 		ValkeyAddr: os.Getenv("VALKEY_ADDR"),
+		APIAddr:    apiAddr(),
 	}
 	c.Port = func() int {
 		port, err := strconv.Atoi(os.Getenv("PORT"))

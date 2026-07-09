@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"codeberg.org/will-x86/bdns/dns/pkg/db"
 	"github.com/rs/zerolog"
+	"github.com/will-x86/bdns/dns/pkg/db"
 )
 
 type Resetter struct {

@@ -3,8 +3,8 @@ package rules
 import (
 	"context"
 
-	"codeberg.org/will-x86/bdns/dns/pkg/rule"
 	"github.com/rs/zerolog"
+	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
 type PermanentWhitelistRule struct{}

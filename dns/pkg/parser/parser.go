@@ -304,8 +304,13 @@ func (m *DNSMessage) Parse(buf []byte) error {
 
 // Readining domain name compression
 func readDomainName(buf []byte, offset int) (string, int, error) {
+	// visited is shared across pointer recursion so a self-referential or
+	// cyclic compression pointer is caught instead of recursing forever.
+	return readDomainNameVisited(buf, offset, make(map[int]bool))
+}
+
+func readDomainNameVisited(buf []byte, offset int, visited map[int]bool) (string, int, error) {
 	var parts []string
-	visited := make(map[int]bool)
 
 	for {
 		if offset >= len(buf) {
@@ -328,7 +333,7 @@ func readDomainName(buf []byte, offset int) (string, int, error) {
 				return "", offset, fmt.Errorf("truncated compression pointer")
 			}
 			ptr := int(binary.BigEndian.Uint16([]byte{buf[offset] & 0x3F, buf[offset+1]}))
-			suffix, _, err := readDomainName(buf, ptr)
+			suffix, _, err := readDomainNameVisited(buf, ptr, visited)
 			if err != nil {
 				return "", offset, err
 			}

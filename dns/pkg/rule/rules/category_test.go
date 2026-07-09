@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"codeberg.org/will-x86/bdns/dns/pkg/db/models"
-	"codeberg.org/will-x86/bdns/dns/pkg/rule"
+	"github.com/will-x86/bdns/dns/pkg/db/models"
+	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
 // Fake category store

@@ -1,10 +1,10 @@
 package rules
 
 import (
-	"codeberg.org/will-x86/bdns/dns/pkg/rule"
 	"context"
 	"fmt"
 	"github.com/rs/zerolog"
+	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
 type BorrowPoolRule struct{}

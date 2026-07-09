@@ -13,12 +13,13 @@ import (
 	"strings"
 	"sync"
 
-	"codeberg.org/will-x86/bdns/dns/pkg/db"
-	"codeberg.org/will-x86/bdns/dns/pkg/proxy"
-	"codeberg.org/will-x86/bdns/dns/pkg/rcache"
-	"codeberg.org/will-x86/bdns/dns/pkg/rule"
-	"codeberg.org/will-x86/bdns/dns/pkg/store"
 	"github.com/rs/zerolog"
+	"github.com/will-x86/bdns/dns/pkg/api"
+	"github.com/will-x86/bdns/dns/pkg/db"
+	"github.com/will-x86/bdns/dns/pkg/proxy"
+	"github.com/will-x86/bdns/dns/pkg/rcache"
+	"github.com/will-x86/bdns/dns/pkg/rule"
+	"github.com/will-x86/bdns/dns/pkg/store"
 )
 
 type DNSUpstream interface {
@@ -56,6 +57,7 @@ type ServerConfig struct {
 	PrivateKey string
 	SignedKey  string
 	ValkeyAddr string
+	APIAddr    string // e.g. ":8080"; empty disables the management API
 }
 
 // Print all files in cert dir & panic, to hopefully be useful to user
@@ -119,6 +121,16 @@ func RunServer(ctx context.Context, c *ServerConfig) {
 	}
 	resetter := store.NewResetter(stores, poolCacheStore)
 	resetter.StartResetJob(ctx)
+
+	// Management API (profiles/whitelists/pools/etc.) shares this process and DB.
+	if c.APIAddr != "" {
+		repo := db.NewRepo(db.GetDB())
+		go func() {
+			if err := api.Serve(ctx, c.APIAddr, repo, poolCacheStore); err != nil {
+				log.Error().Err(err).Str("addr", c.APIAddr).Msg("management API stopped")
+			}
+		}()
+	}
 	/*members, err := stores.GetAllPoolMembersWithTimezones(ctx)
 	if err != nil {
 		panic(err)

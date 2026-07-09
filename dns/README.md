@@ -4,6 +4,8 @@
 
 See ../README.md for what's implemented
 
+Management API for a UI/app: see [API.md](/dns/API.md)
+
 
 
 

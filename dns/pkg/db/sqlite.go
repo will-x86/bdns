@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"os"
 
-	"codeberg.org/will-x86/bdns/dns/pkg/db/models"
 	"github.com/jmoiron/sqlx"
 	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog"
+	"github.com/will-x86/bdns/dns/pkg/db/models"
 	_ "modernc.org/sqlite"
 )
 

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	dns "codeberg.org/miekg/dns"
-	"codeberg.org/will-x86/bdns/dns/pkg/db/models"
-	"codeberg.org/will-x86/bdns/dns/pkg/rule"
+	"github.com/will-x86/bdns/dns/pkg/db/models"
+	"github.com/will-x86/bdns/dns/pkg/rule"
 )
 
 type fakeUpstream struct {
