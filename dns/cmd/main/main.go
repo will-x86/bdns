@@ -26,7 +26,7 @@ func main() {
 
 	// db setup + ingest
 	//	dbLog := log.With().Str("component", "database").Logger()
-	if err := db.InitDB(log, "./app.db", "./migrations/"); err != nil {
+	if err := db.InitDB(log, dbPath(), "./migrations/"); err != nil {
 		log.Fatal().Err(err).Msg("failed to initalize datavase")
 	}
 	if *seed {
@@ -44,6 +44,13 @@ func main() {
 	ctx := context.Background()
 	ctx = log.WithContext(ctx)
 	server.RunServer(ctx, &config)
+}
+
+func dbPath() string {
+	if p := os.Getenv("DB_PATH"); p != "" {
+		return p
+	}
+	return "./app.db"
 }
 
 // apiAddr is API_ADDR, else ":"+API_PORT, else "" (API disabled).
